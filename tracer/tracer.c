@@ -9,6 +9,7 @@
 #include <string.h>
 #include <sys/syscall.h>
 #include "syscall_decoder.h"
+#include <sys/user.h>
 
 #if __WORDSIZE == 64
 #define REG ORIG_RAX
@@ -25,11 +26,36 @@ int exec_child(int argc, char **argv){
     return execvp(args[0], args);
 }
 
+char *read_string(pid_t child, unsigned long addr) {
+    char *val = malloc(4096);
+    int allocated = 4096;
+    int read = 0;
+    unsigned long tmp;
+    while (1) {
+        if (read + sizeof tmp > allocated) {
+            allocated *= 2;
+            val = realloc(val, allocated);
+        }
+        tmp = ptrace(PTRACE_PEEKDATA, child, addr + read);
+        if(errno != 0) {
+            val[read] = 0;
+            break;
+        }
+        memcpy(val + read, &tmp, sizeof tmp);
+        if (memchr(&tmp, 0, sizeof tmp) != NULL)
+            break;
+        read += sizeof tmp;
+    }
+    return val;
+}
+
+
 int main(int argc, char **argv){
 	if (argc < 2) {
         fprintf(stderr, "Usage: %s executable args\n", argv[0]);
         exit(1);
     }
+    struct user_regs_struct regs;
 
     pid_t child;
     child = fork();
@@ -43,8 +69,15 @@ int main(int argc, char **argv){
 			if(WIFEXITED(status)) break;
 
 			long answ = ptrace(PTRACE_PEEKUSER, child, 8*REG, NULL);
+            if (answ == SYS_open){
+				ptrace(PTRACE_GETREGS, child,
+                        NULL, &regs);
 
-			printf("The system call: %s(%ld)\n", decode_sc(answ), answ);
+				char* str= read_string(child, regs.rdi);
+				printf("Open with %s\n", str);
+				free(str);
+            }
+			//printf("The system call: %s(%ld)\n", decode_sc(answ), answ);
 			ptrace(PTRACE_SYSCALL, child, NULL, NULL);
 		}
     }

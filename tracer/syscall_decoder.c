@@ -1,5 +1,47 @@
-#include "syscall_decoder.h"
+#include <sys/reg.h>
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
 #include <sys/syscall.h>
+#include "syscall_decoder.h"
+#include <sys/user.h>
+#include <sys/ptrace.h>
+
+#include "syscall_decoder.h"
+
+long __get_reg(pid_t child, int off) {
+    long val = ptrace(PTRACE_PEEKUSER, child, off);
+    return val;
+}
+
+#define offsetof(a, b) __builtin_offsetof(a,b)
+#define get_reg(child, name) __get_reg(child, offsetof(struct user, regs.name))
+
+long get_syscall_arg(pid_t child, int which) {
+    switch (which) {
+#ifdef __amd64__
+    case 0: return get_reg(child, rdi);
+    case 1: return get_reg(child, rsi);
+    case 2: return get_reg(child, rdx);
+    case 3: return get_reg(child, r10);
+    case 4: return get_reg(child, r8);
+    case 5: return get_reg(child, r9);
+#else
+    case 0: return get_reg(child, ebx);
+    case 1: return get_reg(child, ecx);
+    case 2: return get_reg(child, edx);
+    case 3: return get_reg(child, esi);
+    case 4: return get_reg(child, edi);
+    case 5: return get_reg(child, ebp);
+#endif
+    default: return -1L;
+    }
+}
+
 
 char* decode_sc(long call){
 	switch(call) {
