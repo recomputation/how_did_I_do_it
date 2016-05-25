@@ -87,7 +87,7 @@ ptevent_type wait_sysc(pid_t child) {
 
 
 // Child and the program name
-int exec_trace(pid_t child, char* pn){
+int exec_trace(pid_t child, char* pn, FILE* conn){
 
     int status;
     struct user_regs_struct regs;
@@ -148,7 +148,7 @@ int exec_trace(pid_t child, char* pn){
 
                 if (retval > 0 && should_track(str) ){
                     descriptiors_to_filename[retval] = str;
-                    opened_file(pn, str, filecreate);
+                    opened_file(conn, pn, str, filecreate);
                 }
                 break;
 
@@ -161,7 +161,7 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    file_close(pn, descriptiors_to_filename[temp_fd]);
+                    file_close(conn, pn, descriptiors_to_filename[temp_fd]);
                     free(descriptiors_to_filename[temp_fd]);
                     descriptiors_to_filename[temp_fd]=NULL;
                 }
@@ -176,7 +176,7 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    read_from_file(pn, descriptiors_to_filename[temp_fd]);
+                    read_from_file(conn, pn, descriptiors_to_filename[temp_fd]);
                 }
                 break;
             case SYS_write:
@@ -189,7 +189,7 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    write_to_file(pn, descriptiors_to_filename[temp_fd]);
+                    write_to_file(conn, pn, descriptiors_to_filename[temp_fd]);
                 }
                 break;
             default:
@@ -201,7 +201,7 @@ int exec_trace(pid_t child, char* pn){
 	return 0;
 }
 
-int trace(int argc, char **argv, char* pn ){
+int trace(int argc, char **argv, char* pn, FILE* conn){
 	if (argc < 2) {
         fprintf(stderr, "Usage: %s executable args\n", argv[0]);
         return 1;
@@ -212,6 +212,6 @@ int trace(int argc, char **argv, char* pn ){
     if(child == 0) {
 		return exec_child(argc-1, argv+1);
     } else {
-        return exec_trace(child, pn);
+        return exec_trace(child, pn, conn);
     }
 }

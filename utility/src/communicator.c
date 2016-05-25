@@ -21,13 +21,11 @@ int count_num (int n) {
 
 static char separator = '|';
 
-int initiate_communication(int argc, char** argv){
-    printf("Starting the communication\n");
-    // Initiation of the communication happens here.
-    return 0;
+FILE* initiate_communication(int argc, char** argv){
+    return tmpfile();
 }
 
-int opened_file(char* program_name, char* file_name, int did_create){
+int opened_file(FILE* conn, char* program_name, char* file_name, int did_create){
     // Method invoked when a file is openned.
     // Need to check if the file is not some sysfile and make a copy of the file here
     // Save it to the control file as well
@@ -35,22 +33,28 @@ int opened_file(char* program_name, char* file_name, int did_create){
     return 0;
 }
 
-int read_from_file(char* program_name, char* file_name){
+int read_from_file(FILE* conn, char* program_name, char* file_name){
     // Method that is invoked when the read is perfromed from a particular file
     // That method is needed to find dependencies for the program
     printf("Read %s by %s\n", file_name, program_name);
+    fputs("r", conn);
+    fputs(file_name, conn);
+    fputs("\n", conn);
     return 0;
 }
 
-int write_to_file(char* program_name, char* file_name){
+int write_to_file(FILE* conn, char* program_name, char* file_name){
     // Method that is invoked when the write is happened to a particular file
     // That method is needed to find the files produced by particular programs
     // In here I need to store the file into the config and make it indexable for the finding
     printf("Write %s by %s\n", file_name, program_name);
+    fputs("w", conn);
+    fputs(file_name, conn);
+    fputs("\n", conn);
     return 0;
 }
 
-int file_close(char* program_name, char* file_name){
+int file_close(FILE* conn, char* program_name, char* file_name){
     // Note if the file was closed without any changes (why was it open in the first place?)
     printf("Close %s by %s\n", file_name, program_name);
     return 0;
@@ -63,8 +67,73 @@ int should_track(char* file_name){
     return 0;
 }
 
-int close_communication(int fd){
-    printf("Closing the communicator\n");
+int close_communication(FILE* conn){
+    // Need to process the file here to create the dependencies file
+    char ch;
+    rewind(conn);
+
+    int MAX_FILES=1024;
+    int MAX_FILENAME=150;
+    char* read_files[MAX_FILES];
+    char* wrote_files[MAX_FILES];
+    int c_r=0, c_w=0, c_c=0;
+
+    char type;
+    char* c_filename;
+    short new_word = 1;
+
+    while(( ch = fgetc(conn) ) != EOF){
+        if(new_word){
+            type = ch;
+            new_word = 0;
+            c_c=0;
+            c_filename = malloc( MAX_FILENAME * sizeof(char));
+            continue;
+        }
+        if(ch == '\n'){
+            new_word = 1;
+            switch(type){
+            case 'w':
+                for(int i=0; i< c_w; i++){
+                    int rc = strcmp(c_filename, wrote_files[i]);
+                    if(!rc){
+                        free(c_filename);
+                        c_filename=NULL;
+                        break;
+                    }
+                }
+                if(c_filename){
+                    wrote_files[c_w++]=c_filename;
+                }
+                break;
+            case 'r':
+                for(int i=0; i< c_r; i++){
+                    int rc = strcmp(c_filename, read_files[i]);
+                    if(!rc){
+                        free(c_filename);
+                        c_filename=NULL;
+                        break;
+                    }
+                }
+                if(c_filename){
+                    read_files[c_r++]=c_filename;
+                }
+                break;
+            }
+            continue;
+        }
+        c_filename[c_c++]=ch;
+    }
+
+    printf("Writes:%d, Reads:%d\n", c_w, c_r);
+
+    for(int i=0; i< c_w; i++){
+        printf("WRITE %s\n", wrote_files[i]);
+    }
+    for(int i=0; i< c_r; i++){
+        printf("READ %s\n", read_files[i]);
+    }
+    fclose(conn);
     return 0;
 }
 

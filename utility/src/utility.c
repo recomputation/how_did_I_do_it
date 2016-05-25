@@ -22,10 +22,10 @@ int main (int argc, char *argv[]){
 		}
 	}
 
-	//int fd = initiate_communication(argc, argv);
+	FILE* fd = initiate_communication(argc, argv);
 
-	trace(argc, argv, argv[1]);
+	trace(argc, argv, argv[1], fd);
 
-    //close_communication();
+    close_communication(fd);
     return 0;
 }
