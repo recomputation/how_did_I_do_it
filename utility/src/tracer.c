@@ -10,6 +10,7 @@
 #include <sys/syscall.h>
 #include <sys/user.h>
 #include <limits.h>
+#include <sys/stat.h>
 
 #include "../headers/tracer.h"
 #include "../headers/syscall_decoder.h"
@@ -56,97 +57,151 @@ char *read_string(pid_t child, unsigned long addr) {
     return val;
 }
 
-int wait_sysc(pid_t child) {
+typedef enum {EXITTED, STOPPED, FORKED} ptevent_type;
+
+ptevent_type wait_sysc(pid_t child) {
     int status;
     while (1) {
-        ptrace(PTRACE_SYSCALL, child, 0, 0);
-        waitpid(child, &status, 0);
+        waitpid(-1, &status, __WALL);
+
+        if (status>>8 == (SIGTRAP | (PTRACE_EVENT_VFORK<<8))){
+            long newpid;
+            ptrace(PTRACE_GETEVENTMSG, child, NULL, (long) &newpid);
+            ptrace(PTRACE_SYSCALL, newpid, NULL, NULL);
+            return FORKED;
+        }
+
+        if (status >> 16 == PTRACE_EVENT_FORK) {
+            long newpid;
+            ptrace(PTRACE_GETEVENTMSG, child, NULL, (long) &newpid);
+            ptrace(PTRACE_SYSCALL, newpid, NULL, NULL);
+            return FORKED;
+        }
+
         if (WIFSTOPPED(status) && WSTOPSIG(status) & 0x80)
-            return 0;
+            return STOPPED;
         if (WIFEXITED(status))
-            return 1;
+            return FORKED;
     }
 }
 
 
-int exec_trace(pid_t child, int conn_fd){
+// Child and the program name
+int exec_trace(pid_t child, char* pn){
 
     int status;
     struct user_regs_struct regs;
     waitpid(child, &status, 0);
 
-    ptrace(PTRACE_SETOPTIONS, child, 0, PTRACE_O_TRACESYSGOOD);
+    char* descriptiors_to_filename[20]={NULL};
+    ptrace(PTRACE_ATTACH, child, NULL, NULL);
+    ptrace(PTRACE_SETOPTIONS, child, 0, PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK); //)| PTRACE_O_TRACECLONE | PTRACE_O_TRACEEXEC | PTRACE_O_TRACEVFORKDONE | PTRACE_O_TRACEEXIT);
+
+    struct stat openfile;
+    int retval;
+    int temp_fd;
+    char* str;
+    int filecreate = 0 ;
+    int num_proc = 1;
 
     while(1){
-        if (wait_sysc(child) != 0) break;
+        while(1){
+            ptrace(PTRACE_SYSCALL, child, 0, 0);
+            child = waitpid(-1, &status, __WALL);
+            if (status >> 16 == PTRACE_EVENT_FORK) {
+                long newpid;
+                ptrace(PTRACE_GETEVENTMSG, child, NULL, (long) &newpid);
+                ptrace(PTRACE_SYSCALL, newpid, NULL, NULL);
+                num_proc++;
+                continue;
+            }
+            if (WIFSTOPPED(status) && WSTOPSIG(status) & 0x80){
+                break;
+            }
+
+            if (WIFEXITED(status)){
+                num_proc--;
+                break;
+            }
+        }
+
+        if(num_proc <= 0){
+            break;
+        }
 
         long answ = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG, NULL);
-        int retval;
-        int temp_fd;
-        char* str;
-		char* msg;
-
         switch(answ){
             case SYS_open:
                 ptrace(PTRACE_GETREGS, child, NULL, &regs);
                 str=read_string(child, get_arg(regs, 0));
 
-                if (wait_sysc(child) != 0) break;
+                // Doing detection of the file
+                if (stat(str, &openfile)< 0){
+                    filecreate = 1;
+                }else{
+                    filecreate = 0;
+                }
+
+                ptrace(PTRACE_SYSCALL, child, NULL, NULL);
+                waitpid(child, &status, 0);
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
-				msg = format_msg(OPEN, str, retval);
-                save_data(conn_fd, msg, strlen(msg));
-
-				free(str);
-				free(msg);
+                if (retval > 0 && should_track(str) ){
+                    descriptiors_to_filename[retval] = str;
+                    opened_file(pn, str, filecreate);
+                }
                 break;
+
             case SYS_close:
                 ptrace(PTRACE_GETREGS, child, NULL, &regs);
                 temp_fd = get_arg(regs, 0);
 
-                if (wait_sysc(child) != 0) break;
+                ptrace(PTRACE_SYSCALL, child, NULL, NULL);
+                waitpid(child, &status, 0);
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
-                str = malloc( count_num(temp_fd) * sizeof(char) + 1 );
-				sprintf(str, "%d", temp_fd);
-
-				msg = format_msg(CLOSE, str, retval);
-				save_data(conn_fd, msg, strlen(msg));
-				free(str);
-
+                if (descriptiors_to_filename[temp_fd]){
+                    file_close(pn, descriptiors_to_filename[temp_fd]);
+                    free(descriptiors_to_filename[temp_fd]);
+                    descriptiors_to_filename[temp_fd]=NULL;
+                }
                 break;
             case SYS_read:
                 ptrace(PTRACE_GETREGS, child, NULL, &regs);
                 temp_fd = get_arg(regs, 0);
-                str=read_string(child, get_arg(regs, 1));
-                printf("Read '%s' from '%d'\n", str, temp_fd);
-                free(str);
+                //str="";//read_string(child, get_arg(regs, 1));
 
+                ptrace(PTRACE_SYSCALL, child, NULL, NULL);
+                waitpid(child, &status, 0);
+                retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
+
+                if (descriptiors_to_filename[temp_fd]){
+                    read_from_file(pn, descriptiors_to_filename[temp_fd]);
+                }
                 break;
             case SYS_write:
                 ptrace(PTRACE_GETREGS, child, NULL, &regs);
-                temp_fd= regs.rdi;
-                str=read_string(child, get_arg(regs, 1));
-                printf("Writing '%s' to '%d' ... ", str, temp_fd);
-                free(str);
-                if (wait_sysc(child) != 0) break;
+                temp_fd= get_arg(regs, 0);
+                //str=read_string(child, get_arg(regs, 1));
+
+                ptrace(PTRACE_SYSCALL, child, NULL, NULL);
+                waitpid(child, &status, 0);
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
-                if (retval == -1){
-                    printf("FAIL\n");
-                }else{
-                    printf("%d written\n", retval);
+                if (descriptiors_to_filename[temp_fd]){
+                    write_to_file(pn, descriptiors_to_filename[temp_fd]);
                 }
                 break;
             default:
-                break;
                 //printf("The system call: %s(%ld)\n", decode_sc(answ), answ);
+                ptrace(PTRACE_SYSCALL, child, 0, 0);
+                break;
         }
     }
 	return 0;
 }
 
-int trace(int argc, char **argv, int fd){
+int trace(int argc, char **argv, char* pn ){
 	if (argc < 2) {
         fprintf(stderr, "Usage: %s executable args\n", argv[0]);
         return 1;
@@ -157,6 +212,6 @@ int trace(int argc, char **argv, int fd){
     if(child == 0) {
 		return exec_child(argc-1, argv+1);
     } else {
-        return exec_trace(child, fd);
+        return exec_trace(child, pn);
     }
 }

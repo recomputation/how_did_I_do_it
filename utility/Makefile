@@ -1,13 +1,14 @@
 include Makefile.inc
 
 sources = $(wildcard $(SRC_FOLDER)/*.c)
+headers = $(wildcard $(HEADER_FOLDER)/*.h)
 objs = $(sources:$(SRC_FOLDER)/%.c=$(OBJ_FOLDER)/%.o)
 
 #---------
 
 all: utility
 
-utility: $(objs)
+utility: $(objs) $(headers)
 	$(info $(sources))
 	$(info $(objs))
 	
