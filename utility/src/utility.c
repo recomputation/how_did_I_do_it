@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <unistd.h>
+
 #include "../headers/tracer.h"
+#include "../headers/communicator.h"
 
 int main (int argc, char *argv[]){
 
@@ -19,6 +21,11 @@ int main (int argc, char *argv[]){
 			break;
 		}
 	}
-	trace(argc, argv);
+
+	int fd = initiate_communication(NULL);
+
+	trace(argc, argv, fd);
+
+    close_communication(fd);
     return 0;
 }
