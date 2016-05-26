@@ -195,13 +195,13 @@ int exec_trace(pid_t child, char* pn, FILE* conn){
             /*case SYS_rename:
                 ptrace(PTRACE_GETREGS, child, NULL, &regs);
                 str = read_string(child, get_arg(regs,0));
-                printf("RENAME FROM %s to ", str);
-                free(str);
-                str = read_string(child, get_arg(regs,1));
-                printf("%s\n", str);
-                free(str);
+                char* to = read_string(child, get_arg(regs,1));
                 ptrace(PTRACE_SYSCALL, child, NULL, NULL);
                 waitpid(child, &status, 0);
+
+				rename_file(conn, pn, str, to);
+				free(str);
+				free(to);
                 break;*/
             default:
                 //printf("The system call: %s(%ld)\n", decode_sc(answ), answ);

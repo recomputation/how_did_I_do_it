@@ -22,6 +22,8 @@ int write_to_file(FILE* conn, char* program_name, char* file_name);
 // Method is invoked when the close is invoked of a particular file from the program
 int file_close(FILE* conn, char* prgram_name, char* file_name);
 
+int rename_file(FILE* conn, char* program_name, char* from, char* to);
+
 // Method is invoked to check if the file should be tracked
 // 0 if should not
 // 1 if should

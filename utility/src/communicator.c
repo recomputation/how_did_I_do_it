@@ -24,7 +24,7 @@ int count_num (int n) {
 
 static char* base = "/tmp/ilia_";
 
-int file_md5_and_copy(char* filename){
+char* file_md5_and_copy(char* filename){
 	unsigned char c[MD5_DIGEST_LENGTH];
 
 	FILE* inFile = fopen (filename, "rb");
@@ -49,12 +49,14 @@ int file_md5_and_copy(char* filename){
 
 	//TODO: move to a separate config file or something
 	int basesize = strlen(base);
-	char* newfile = malloc(sizeof(char)*(MD5_DIGEST_LENGTH+basesize) + 1);
+	char* newfile = malloc(sizeof(char)*(MD5_DIGEST_LENGTH+basesize) + 2);
+	char* index = malloc(sizeof(char)*(MD5_DIGEST_LENGTH+1));
+
+	for(int i = 0; i < MD5_DIGEST_LENGTH; i++) sprintf(&index[i], "%02x", (unsigned int)c[i]);
+	index[MD5_DIGEST_LENGTH]='\0';
 
 	strcpy(newfile, base);
-
-	for(int i = 0; i < MD5_DIGEST_LENGTH; i++) sprintf(&newfile[basesize+i], "%02x", (unsigned int)c[i]);
-	newfile[basesize+MD5_DIGEST_LENGTH]='\0';
+	strcat(newfile, index);
 
     FILE* toFile = fopen (newfile, "wb+");
 	//TODO: add check for file access here
@@ -76,10 +78,9 @@ int file_md5_and_copy(char* filename){
 
 	//TODO: NEED TO DO ERROR HANDLING HERE
 
-	free(newfile);
 	fclose(inFile);
 	fclose(toFile);
-	return 0;
+	return newfile;
 }
 
 int isDirectory(char *path) {
@@ -100,7 +101,8 @@ int opened_file(FILE* conn, char* program_name, char* file_name, int did_create)
     // Need to check if the file is not some sysfile and make a copy of the file here
     // Save it to the control file as well
     printf("Open %s by %s(%d)\n", file_name, program_name, did_create);
-	if(!isDirectory(file_name))file_md5_and_copy(file_name);
+	if(!isDirectory(file_name))
+		free(file_md5_and_copy(file_name));
     return 0;
 }
 
@@ -125,9 +127,23 @@ int write_to_file(FILE* conn, char* program_name, char* file_name){
     return 0;
 }
 
+int rename_file(FILE* conn, char* program_name, char* from, char* to){
+	printf("Rename FROM:%s TO:%s by %s\n", from ,to, program_name);
+	//TODO: maybe rename it here?
+	fputs("a", conn);
+	fputs(from, conn);
+	fputs(";", conn);
+	fputs(to, conn);
+	fputs("\n", conn);
+}
+
 int file_close(FILE* conn, char* program_name, char* file_name){
     // Note if the file was closed without any changes (why was it open in the first place?)
     printf("Close %s by %s\n", file_name, program_name);
+	//TODO: need to be carefyul here. It might be the case that the file is moved, without a closed handle
+	//TODO: add the outlined check
+	if(!isDirectory(file_name))
+		free(file_md5_and_copy(file_name));
     return 0;
 }
 
@@ -158,10 +174,11 @@ int close_communication(FILE* conn){
             type = ch;
             new_word = 0;
             c_c=0;
-            c_filename = malloc( MAX_FILENAME * sizeof(char));
+            c_filename = malloc( (MAX_FILENAME) * sizeof(char));
             continue;
         }
         if(ch == '\n'){
+			c_filename[c_c] = '\0';
             new_word = 1;
             switch(type){
             case 'w':
@@ -198,12 +215,19 @@ int close_communication(FILE* conn){
 
     printf("Writes:%d, Reads:%d\n", c_w, c_r);
 
+	/*
     for(int i=0; i< c_w; i++){
         printf("WRITE %s\n", wrote_files[i]);
+		char* index = file_md5_and_copy(wrote_files[i]);
+		free(index);
     }
+
     for(int i=0; i< c_r; i++){
         printf("READ %s\n", read_files[i]);
+		char* index = file_md5_and_copy(read_files[i]);
+		free(index);
     }
+	*/
     fclose(conn);
     return 0;
 }
