@@ -1,9 +1,12 @@
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "../headers/communicator.h"
 #include <limits.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
+#include <openssl/md5.h>
 
 int count_num (int n) {
     if (n < 0) n = (n == INT_MIN) ? INT_MAX : -n;
@@ -19,6 +22,73 @@ int count_num (int n) {
     return 10;
 }
 
+static char* base = "/tmp/ilia_";
+
+int file_md5_and_copy(char* filename){
+	unsigned char c[MD5_DIGEST_LENGTH];
+
+	FILE* inFile = fopen (filename, "rb");
+
+	if (!inFile){
+		printf("Failed to open the file");
+		return 0;
+	}
+
+	//TODO: check if the file is accessible
+
+    MD5_CTX mdContext;
+    int bytes;
+	int dataSize = 1024;
+    char data[dataSize];
+
+    MD5_Init (&mdContext);
+    while ((bytes = fread (data, 1, dataSize, inFile)) != 0){
+        MD5_Update (&mdContext, data, bytes);
+	}
+    MD5_Final (c,&mdContext);
+
+	//TODO: move to a separate config file or something
+	int basesize = strlen(base);
+	char* newfile = malloc(sizeof(char)*(MD5_DIGEST_LENGTH+basesize) + 1);
+
+	strcpy(newfile, base);
+
+	for(int i = 0; i < MD5_DIGEST_LENGTH; i++) sprintf(&newfile[basesize+i], "%02x", (unsigned int)c[i]);
+	newfile[basesize+MD5_DIGEST_LENGTH]='\0';
+
+    FILE* toFile = fopen (newfile, "wb+");
+	//TODO: add check for file access here
+	rewind(inFile);
+
+    ssize_t nread;
+	while ((nread = fread(data, 1, dataSize, inFile)) > 0){
+        char* out_ptr = data;
+        ssize_t nwritten;
+        do {
+            nwritten = fwrite(out_ptr, 1, nread, toFile);
+            if (nwritten >= 0)
+            {
+                nread -= nwritten;
+                out_ptr += nwritten;
+            }
+        } while (nread > 0);
+    }
+
+	//TODO: NEED TO DO ERROR HANDLING HERE
+
+	free(newfile);
+	fclose(inFile);
+	fclose(toFile);
+	return 0;
+}
+
+int isDirectory(char *path) {
+   struct stat statbuf;
+   if (stat(path, &statbuf) != 0)
+       return 0;
+   return S_ISDIR(statbuf.st_mode);
+}
+
 static char separator = '|';
 
 FILE* initiate_communication(int argc, char** argv){
@@ -30,6 +100,7 @@ int opened_file(FILE* conn, char* program_name, char* file_name, int did_create)
     // Need to check if the file is not some sysfile and make a copy of the file here
     // Save it to the control file as well
     printf("Open %s by %s(%d)\n", file_name, program_name, did_create);
+	if(!isDirectory(file_name))file_md5_and_copy(file_name);
     return 0;
 }
 

@@ -1,7 +1,7 @@
 #File with common definitions
 
 CC = gcc
-CC_FLAGS=-g -Wextra -Wall 
+CC_FLAGS=-g -Wextra -Wall -lssl -lcrypto
 
 
 HEADER_FOLDER = headers
