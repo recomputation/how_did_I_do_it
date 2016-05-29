@@ -293,8 +293,10 @@ int write_recipe(char* filename, char* md5_digest, char* command, char** depende
 
     fwrite(filename, 1, strlen(filename), recipe_file);
     fwrite("\n", 1, 1, recipe_file);
+	fwrite("COMMAND:", 1, 8, recipe_file);
     fwrite(command, 1, strlen(command), recipe_file);
     fwrite("\n", 1, 1, recipe_file);
+	fwrite("DEPEND:", 1, 7, recipe_file);
     for(int i=0; i< num_dependencies; i++){
         fwrite(dependencies[i], 1, strlen(dependencies[i]), recipe_file);
         fwrite(" ", 1, 1, recipe_file);

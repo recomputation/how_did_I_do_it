@@ -28,25 +28,23 @@ int find_recipe_by_md5(char* md5_digest){
 				strcpy(file_name, newfile);
 				strcat(file_name, "/");
 				strcat(file_name, dir->d_name);
-				printf("%s\n", file_name);
 				file_name[stringsize]='\0';
 
 				FILE* t_file = fopen( file_name, "r");
 
 				if (!t_file){
-					printf("%s\n", file_name);
 					free(file_name);
 					continue;
 				}
 
 				printf("===============\n");
-				printf("%s:\n", dir->d_name);
 
 				while (fgets(buffer, sizeof(buffer), t_file)) {
 					printf("%s", buffer);
 				}
 				fclose(t_file);
 				free(file_name);
+				printf("\n");
 			}
 		}
 		closedir(d);
