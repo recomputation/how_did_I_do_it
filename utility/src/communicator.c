@@ -25,17 +25,16 @@ int count_num (int n) {
     return 10;
 }
 
-char* file_md5_and_copy(char* filename){
-	unsigned char c[MD5_DIGEST_LENGTH];
+char* get_md5(char* filename){
 
+	unsigned char c[MD5_DIGEST_LENGTH];
 	FILE* inFile = fopen (filename, "rb");
 
-	if (!inFile){
-		printf("Failed to open the file");
-		return 0;
-	}
-
 	//TODO: check if the file is accessible
+	if (!inFile){
+		printf("Failed to open the file\n");
+		return NULL;
+	}
 
     MD5_CTX mdContext;
     int bytes;
@@ -49,20 +48,26 @@ char* file_md5_and_copy(char* filename){
     MD5_Final (c,&mdContext);
 
 	//TODO: move to a separate config file or something
-	int basesize = strlen(file_directory);
-	char* newfile = malloc(sizeof(char)*(MD5_DIGEST_LENGTH+basesize) + 2);
 	char* index = malloc(sizeof(char)*(MD5_DIGEST_LENGTH+1));
 
 	for(int i = 0; i < MD5_DIGEST_LENGTH; i++) sprintf(&index[i], "%02x", (unsigned int)c[i]);
 	index[MD5_DIGEST_LENGTH]='\0';
 
-	strcpy(newfile, file_directory);
-	strcat(newfile, index);
+    fclose(inFile);
 
-    FILE* toFile = fopen (newfile, "wb+");
-	//TODO: add check for file access here
-	rewind(inFile);
+    return index;
+}
 
+int copy_file(char* orig_filename, char* new_filename){
+    FILE* toFile = fopen(new_filename, "wb+");
+	FILE* inFile = fopen (orig_filename, "rb");
+
+    if(!toFile || !inFile){
+        return -1;
+    }
+
+	int dataSize = 1024;
+    char data[dataSize];
     ssize_t nread;
 	while ((nread = fread(data, 1, dataSize, inFile)) > 0){
         char* out_ptr = data;
@@ -77,12 +82,25 @@ char* file_md5_and_copy(char* filename){
         } while (nread > 0);
     }
 
-	//TODO: NEED TO DO ERROR HANDLING HERE
-
 	fclose(inFile);
 	fclose(toFile);
-	free(newfile);
-	return index;
+    return 0;
+}
+
+char* file_md5_and_copy(char* filename){
+
+    char* md5_file_digest = get_md5(filename);
+
+	//TODO: move to a separate config file or something
+	int basesize = strlen(file_directory);
+	char* newfile = malloc(sizeof(char)*(MD5_DIGEST_LENGTH+basesize) + 2);
+
+	strcpy(newfile, file_directory);
+	strcat(newfile, md5_file_digest);
+    copy_file( filename, newfile);
+
+    free(newfile);
+    return md5_file_digest;
 }
 
 int isDirectory(char *path) {
@@ -147,6 +165,7 @@ int rename_file(FILE* conn, char* program_name, char* from, char* to){
 	fputs(";", conn);
 	fputs(to, conn);
 	fputs("\n", conn);
+	return 0;
 }
 
 int file_close(FILE* conn, char* program_name, char* file_name){
@@ -261,13 +280,26 @@ int write_recipe(char* filename, char* md5_digest, char* command, char** depende
 	strcpy(newfile, recipe_directory);
 	strcat(newfile, md5_digest);
 
+    struct stat st = {0};
+    if (stat(newfile, &st) == -1) {
+        mkdir(newfile, 0700);
+    }
+
+    strcat(newfile, "/");
+    strcat(newfile, filename);
+    strcat(newfile, "\0");
+
     FILE* recipe_file = fopen (newfile, "wb+");
 
     printf("Writing recipe %s\n", newfile);
+
+    fwrite(filename, 1, strlen(filename), recipe_file);
+    fwrite("\n", 1, 1, recipe_file);
     fwrite(command, 1, strlen(command), recipe_file);
+    fwrite("\n", 1, 1, recipe_file);
     for(int i=0; i< num_dependencies; i++){
-        fwrite(",", 1, 1, recipe_file);
         fwrite(dependencies[i], 1, strlen(dependencies[i]), recipe_file);
+        fwrite(" ", 1, 1, recipe_file);
     }
 
     fclose(recipe_file);
