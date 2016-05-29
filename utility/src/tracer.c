@@ -57,34 +57,6 @@ char *read_string(pid_t child, unsigned long addr) {
     return val;
 }
 
-typedef enum {EXITTED, STOPPED, FORKED} ptevent_type;
-
-ptevent_type wait_sysc(pid_t child) {
-    int status;
-    while (1) {
-        waitpid(-1, &status, __WALL);
-
-        if (status>>8 == (SIGTRAP | (PTRACE_EVENT_VFORK<<8))){
-            long newpid;
-            ptrace(PTRACE_GETEVENTMSG, child, NULL, (long) &newpid);
-            ptrace(PTRACE_SYSCALL, newpid, NULL, NULL);
-            return FORKED;
-        }
-
-        if (status >> 16 == PTRACE_EVENT_FORK) {
-            long newpid;
-            ptrace(PTRACE_GETEVENTMSG, child, NULL, (long) &newpid);
-            ptrace(PTRACE_SYSCALL, newpid, NULL, NULL);
-            return FORKED;
-        }
-
-        if (WIFSTOPPED(status) && WSTOPSIG(status) & 0x80)
-            return STOPPED;
-        if (WIFEXITED(status))
-            return FORKED;
-    }
-}
-
 
 // Child and the program name
 int exec_trace(pid_t child, char* pn, FILE* conn){

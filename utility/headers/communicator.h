@@ -1,5 +1,8 @@
 // Header file for the functions that should be defined in the communication interface
 
+static const char* file_directory = "/tmp/ilia_fd/";
+static const char* recipe_directory = "/tmp/ilia_recipes/";
+
 typedef enum {OPEN, CLOSE, READ, WRITE} event_type;
 
 FILE* initiate_communication(int argc, char** argv);
@@ -28,3 +31,4 @@ int rename_file(FILE* conn, char* program_name, char* from, char* to);
 int should_track(char* file_name);
 
 int write_recipe(char* filename, char* md5_digest, char* command, char** dependencies, int num_dependencies );
+char* get_md5(char* filename);

@@ -8,8 +8,6 @@
 #include <errno.h>
 #include <openssl/md5.h>
 
-static const char* file_directory = "/tmp/ilia_fd/";
-static const char* recipe_directory = "/tmp/ilia_recipes/";
 
 int count_num (int n) {
     if (n < 0) n = (n == INT_MIN) ? INT_MAX : -n;
