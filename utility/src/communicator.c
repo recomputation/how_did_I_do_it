@@ -8,6 +8,9 @@
 #include <errno.h>
 #include <openssl/md5.h>
 
+static const char* file_directory = "/tmp/ilia_fd/";
+static const char* recipe_directory = "/tmp/ilia_recipes/";
+
 int count_num (int n) {
     if (n < 0) n = (n == INT_MIN) ? INT_MAX : -n;
     if (n < 10) return 1;
@@ -21,8 +24,6 @@ int count_num (int n) {
     if (n < 1000000000) return 9;
     return 10;
 }
-
-static char* base = "/tmp/ilia_";
 
 char* file_md5_and_copy(char* filename){
 	unsigned char c[MD5_DIGEST_LENGTH];
@@ -48,14 +49,14 @@ char* file_md5_and_copy(char* filename){
     MD5_Final (c,&mdContext);
 
 	//TODO: move to a separate config file or something
-	int basesize = strlen(base);
+	int basesize = strlen(file_directory);
 	char* newfile = malloc(sizeof(char)*(MD5_DIGEST_LENGTH+basesize) + 2);
 	char* index = malloc(sizeof(char)*(MD5_DIGEST_LENGTH+1));
 
 	for(int i = 0; i < MD5_DIGEST_LENGTH; i++) sprintf(&index[i], "%02x", (unsigned int)c[i]);
 	index[MD5_DIGEST_LENGTH]='\0';
 
-	strcpy(newfile, base);
+	strcpy(newfile, file_directory);
 	strcat(newfile, index);
 
     FILE* toFile = fopen (newfile, "wb+");
@@ -80,7 +81,8 @@ char* file_md5_and_copy(char* filename){
 
 	fclose(inFile);
 	fclose(toFile);
-	return newfile;
+	free(newfile);
+	return index;
 }
 
 int isDirectory(char *path) {
@@ -93,6 +95,15 @@ int isDirectory(char *path) {
 static char separator = '|';
 
 FILE* initiate_communication(int argc, char** argv){
+    struct stat st = {0};
+
+    if (stat(file_directory, &st) == -1) {
+        mkdir(file_directory, 0700);
+    }
+    if (stat(recipe_directory, &st) == -1) {
+        mkdir(recipe_directory, 0700);
+    }
+
     return tmpfile();
 }
 
@@ -101,8 +112,9 @@ int opened_file(FILE* conn, char* program_name, char* file_name, int did_create)
     // Need to check if the file is not some sysfile and make a copy of the file here
     // Save it to the control file as well
     printf("Open %s by %s(%d)\n", file_name, program_name, did_create);
-	if(!isDirectory(file_name))
+	if(!isDirectory(file_name)){
 		free(file_md5_and_copy(file_name));
+	}
     return 0;
 }
 
@@ -148,13 +160,14 @@ int file_close(FILE* conn, char* program_name, char* file_name){
 }
 
 int should_track(char* file_name){
+    //TODO: maybe add a set of rules here or something?
     if ( file_name[0] != '/' || (file_name[0] == '/' && strstr(file_name, getlogin()))){
         return 1;
     }
     return 0;
 }
 
-int close_communication(FILE* conn){
+int close_communication(FILE* conn, char* program_name){
     // Need to process the file here to create the dependencies file
     char ch;
     rewind(conn);
@@ -215,20 +228,51 @@ int close_communication(FILE* conn){
 
     printf("Writes:%d, Reads:%d\n", c_w, c_r);
 
-	/*
+
     for(int i=0; i< c_w; i++){
         printf("WRITE %s\n", wrote_files[i]);
 		char* index = file_md5_and_copy(wrote_files[i]);
+
+        if(index)
+            write_recipe(wrote_files[i], index, program_name, read_files, c_r);
+
 		free(index);
     }
-
+    /*
     for(int i=0; i< c_r; i++){
         printf("READ %s\n", read_files[i]);
 		char* index = file_md5_and_copy(read_files[i]);
+
+        if(index)
+            write_recipe(read_files[i], index, pn, read_files);
+
 		free(index);
-    }
-	*/
+    }*/
+
     fclose(conn);
+    return 0;
+}
+
+int write_recipe(char* filename, char* md5_digest, char* command, char** dependencies, int num_dependencies ){
+
+	int basesize = strlen(recipe_directory);
+    char* newfile = malloc(sizeof(char)*(strlen(md5_digest)+basesize) + 2);
+
+	strcpy(newfile, recipe_directory);
+	strcat(newfile, md5_digest);
+
+    FILE* recipe_file = fopen (newfile, "wb+");
+
+    printf("Writing recipe %s\n", newfile);
+    fwrite(command, 1, strlen(command), recipe_file);
+    for(int i=0; i< num_dependencies; i++){
+        fwrite(",", 1, 1, recipe_file);
+        fwrite(dependencies[i], 1, strlen(dependencies[i]), recipe_file);
+    }
+
+    fclose(recipe_file);
+
+    free(newfile);
     return 0;
 }
 

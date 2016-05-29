@@ -4,10 +4,8 @@ typedef enum {OPEN, CLOSE, READ, WRITE} event_type;
 
 FILE* initiate_communication(int argc, char** argv);
 int save_data(int fd, char* data, size_t size);
-int close_communication(FILE* fd);
-
+int close_communication(FILE* fd, char* file_name);
 char* format_msg(event_type type, char *msg, int work_fd, int retvalue);
-
 int count_num (int n);
 
 // Method is invoked when the file is openned
@@ -29,3 +27,4 @@ int rename_file(FILE* conn, char* program_name, char* from, char* to);
 // 1 if should
 int should_track(char* file_name);
 
+int write_recipe(char* filename, char* md5_digest, char* command, char** dependencies, int num_dependencies );

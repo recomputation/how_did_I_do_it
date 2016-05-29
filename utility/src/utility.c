@@ -42,7 +42,7 @@ int main (int argc, char *argv[]){
 
 	trace(argc, argv, pn, fd);
 
-    close_communication(fd);
+    close_communication(fd, pn);
     free(pn);
 
     return 0;
