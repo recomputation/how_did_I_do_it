@@ -9,6 +9,7 @@
 #include <sys/syscall.h>
 #include <sys/user.h>
 #include <sys/ptrace.h>
+#include <string>
 
 #include "../headers/syscall_decoder.h"
 
@@ -35,7 +36,7 @@ long get_arg(struct user_regs_struct regs, int which){
 }
 
 
-char* decode_sc(long call){
+std::string decode_sc(long call){
 	switch(call) {
 #ifdef SYS__sysctl
   case SYS__sysctl : return "_sysctl";

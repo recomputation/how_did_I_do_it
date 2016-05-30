@@ -1,8 +1,8 @@
 include Makefile.inc
 
-sources = $(wildcard $(SRC_FOLDER)/*.c)
+sources = $(wildcard $(SRC_FOLDER)/*.cpp)
 headers = $(wildcard $(HEADER_FOLDER)/*.h)
-objs = $(sources:$(SRC_FOLDER)/%.c=$(OBJ_FOLDER)/%.o)
+objs = $(sources:$(SRC_FOLDER)/%.cpp=$(OBJ_FOLDER)/%.o)
 
 #---------
 
@@ -14,9 +14,9 @@ utility: $(objs) $(headers)
 	
 	$(CC) $(CC_FLAGS) -o utility $(objs)
 
-$(OBJ_FOLDER)/%.o:$(SRC_FOLDER)/%.c
+$(OBJ_FOLDER)/%.o:$(SRC_FOLDER)/%.cpp
 	$(CC) -c $< $(CC_FLAGS) -o $@
 
 clean:
-	rm $(OBJ_FOLDER)/*.o
+	rm -f $(OBJ_FOLDER)/*.o
 

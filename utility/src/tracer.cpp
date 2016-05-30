@@ -34,7 +34,7 @@ int exec_child(int argc, char **argv){
 }
 
 char *read_string(pid_t child, unsigned long addr) {
-    char *val = malloc(4096);
+    char *val = (char*) malloc(4096);
     int allocated = 4096;
     int read = 0;
     unsigned long tmp;
@@ -42,7 +42,7 @@ char *read_string(pid_t child, unsigned long addr) {
         // I feel pretty bad when do that
         if (read + (int)(sizeof(tmp)) > allocated) {
             allocated *= 2;
-            val = realloc(val, allocated);
+            val = (char*) realloc(val, allocated);
         }
         tmp = ptrace(PTRACE_PEEKDATA, child, addr + read);
         if(errno != 0) {
@@ -59,7 +59,7 @@ char *read_string(pid_t child, unsigned long addr) {
 
 
 // Child and the program name
-int exec_trace(pid_t child, char* pn, FILE* conn){
+int exec_trace(pid_t child, char* pn){
 
     int status;
     struct user_regs_struct regs;
@@ -120,7 +120,7 @@ int exec_trace(pid_t child, char* pn, FILE* conn){
 
                 if (retval > 0 && should_track(str) ){
                     descriptiors_to_filename[retval] = str;
-                    opened_file(conn, pn, str, filecreate);
+                    opened_file(pn, str, filecreate);
                 }
                 break;
 
@@ -133,7 +133,7 @@ int exec_trace(pid_t child, char* pn, FILE* conn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    file_close(conn, pn, descriptiors_to_filename[temp_fd]);
+                    file_close(pn, descriptiors_to_filename[temp_fd]);
                     free(descriptiors_to_filename[temp_fd]);
                     descriptiors_to_filename[temp_fd]=NULL;
                 }
@@ -148,7 +148,7 @@ int exec_trace(pid_t child, char* pn, FILE* conn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    read_from_file(conn, pn, descriptiors_to_filename[temp_fd]);
+                    read_from_file(pn, descriptiors_to_filename[temp_fd]);
                 }
                 break;
             case SYS_write:
@@ -161,7 +161,7 @@ int exec_trace(pid_t child, char* pn, FILE* conn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    write_to_file(conn, pn, descriptiors_to_filename[temp_fd]);
+                    write_to_file(pn, descriptiors_to_filename[temp_fd]);
                 }
                 break;
             /*case SYS_rename:
@@ -184,7 +184,7 @@ int exec_trace(pid_t child, char* pn, FILE* conn){
 	return 0;
 }
 
-int trace(int argc, char **argv, char* pn, FILE* conn){
+int trace(int argc, char **argv, char* pn){
 	if (argc < 2) {
         fprintf(stderr, "Usage: %s executable args\n", argv[0]);
         return 1;
@@ -195,6 +195,6 @@ int trace(int argc, char **argv, char* pn, FILE* conn){
     if(child == 0) {
 		return exec_child(argc-1, argv+1);
     } else {
-        return exec_trace(child, pn, conn);
+        return exec_trace(child, pn);
     }
 }

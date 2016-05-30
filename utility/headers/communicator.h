@@ -1,34 +1,37 @@
 // Header file for the functions that should be defined in the communication interface
+#include <string>
+#include <set>
 
-static const char* file_directory = "/tmp/ilia_fd/";
-static const char* recipe_directory = "/tmp/ilia_recipes/";
+static const std::string file_directory("/tmp/ilia_fd/");
+static const std::string recipe_directory("/tmp/ilia_recipes/");
 
-typedef enum {OPEN, CLOSE, READ, WRITE} event_type;
-
-FILE* initiate_communication(int argc, char** argv);
 int save_data(int fd, char* data, size_t size);
-int close_communication(FILE* fd, char* file_name);
-char* format_msg(event_type type, char *msg, int work_fd, int retvalue);
+int close_communication(char* file_name);
 int count_num (int n);
 
+void initiate_communication();
+
 // Method is invoked when the file is openned
-int opened_file(FILE* conn, char* program_name, char* filename, int did_create);
+int opened_file(char* program_name, char* filename, int did_create);
 
 // Method is invoked when read from a file is perfromed
-int read_from_file(FILE* conn, char* program_name, char* file_name);
+int read_from_file(char* program_name, char* file_name);
 
 // Method is invoked when a write is perfomed on the file
-int write_to_file(FILE* conn, char* program_name, char* file_name);
+int write_to_file(char* program_name, char* file_name);
 
 // Method is invoked when the close is invoked of a particular file from the program
-int file_close(FILE* conn, char* prgram_name, char* file_name);
+int file_close(char* prgram_name, char* file_name);
 
-int rename_file(FILE* conn, char* program_name, char* from, char* to);
+int rename_file(char* program_name, char* from, char* to);
 
 // Method is invoked to check if the file should be tracked
 // 0 if should not
 // 1 if should
 int should_track(char* file_name);
 
-int write_recipe(char* filename, char* md5_digest, char* command, char** dependencies, int num_dependencies );
-char* get_md5(char* filename);
+
+char* get_md5(std::string filename);
+char* file_md5_and_copy(std::string filename);
+
+int write_recipe(std::string filename, char* md5_digest, char* program_name, std::set<std::string> read_files);

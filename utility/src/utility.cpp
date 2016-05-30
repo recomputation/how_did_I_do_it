@@ -9,7 +9,8 @@
 
 
 void traceme(int argc, char* argv[]){
-	FILE* fd = initiate_communication(argc, argv);
+
+    initiate_communication();
 
     int pn_size = 0;
     for(int i=1; i<argc; i++){
@@ -17,7 +18,7 @@ void traceme(int argc, char* argv[]){
     }
     pn_size+=1;
 
-    char* pn = malloc( sizeof(char)*pn_size);
+    char* pn = (char*) malloc( sizeof(char)*pn_size);
 
     strcpy(pn, argv[1]);
     for(int i=2; i < argc; i++){
@@ -25,9 +26,9 @@ void traceme(int argc, char* argv[]){
         strcat(pn, argv[i]);
     }
 
-	trace(argc, argv, pn, fd);
+	trace(argc, argv, pn);
 
-    close_communication(fd, pn);
+    close_communication(pn);
     free(pn);
 }
 

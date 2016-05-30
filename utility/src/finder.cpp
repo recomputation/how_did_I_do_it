@@ -6,34 +6,26 @@
 
 #include "../headers/communicator.h"
 
-extern const char* file_directory;
-extern const char* recipe_directory;
+extern std::set<std::string> files_read;
+extern std::set<std::string> files_written;
 
 int find_recipe_by_md5(char* md5_digest){
 
-    char* newfile = malloc(sizeof(char)*(1+strlen(md5_digest)+strlen(recipe_directory)));
-    strcpy(newfile, recipe_directory);
-    strcat(newfile, md5_digest);
+    std::string newfile = recipe_directory + std::string(md5_digest);
 
 	DIR* d;
   	struct dirent *dir;
-  	d = opendir(newfile);
+  	d = opendir(newfile.c_str());
 	char buffer[100];
 
   	if (d){
     	while ((dir = readdir(d)) != NULL){
 			if (strcmp(dir->d_name, ".") && strcmp(dir->d_name, "..")){
-				int stringsize = 2+strlen(newfile) + strlen(dir->d_name);
-				char* file_name = malloc(sizeof(char)*(stringsize));
-				strcpy(file_name, newfile);
-				strcat(file_name, "/");
-				strcat(file_name, dir->d_name);
-				file_name[stringsize]='\0';
+                std::string file_name = newfile + "/" + std::string(dir->d_name);
 
-				FILE* t_file = fopen( file_name, "r");
+				FILE* t_file = fopen( file_name.c_str(), "r");
 
 				if (!t_file){
-					free(file_name);
 					continue;
 				}
 
@@ -43,7 +35,7 @@ int find_recipe_by_md5(char* md5_digest){
 					printf("%s", buffer);
 				}
 				fclose(t_file);
-				free(file_name);
+
 				printf("\n");
 			}
 		}
