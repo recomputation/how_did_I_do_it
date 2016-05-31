@@ -14,7 +14,6 @@
 #include <set>
 #include <string>
 #include <unordered_map>
-#include <ctime>
 
 struct ofile{
     char* filename;
@@ -22,20 +21,21 @@ struct ofile{
 	char* close_sha512_digest;
 	bool written;
 	bool read;
-	bool created;
 };
 
+std::unordered_map<std::string,ofile> file_to_ofile;
+
+
 struct ofile_compare {
-    bool operator() (ofile* lhs, ofile* rhs) const{
-        return !strcmp(lhs->filename, rhs->filename) && !strcmp(lhs->open_sha512_digest, rhs->open_sha512_digest);
+    bool operator() (const ofile& lhs, const ofile& rhs) const{
+        return !strcmp(lhs.filename, rhs.filename) && !strcmp(lhs.open_sha512_digest, rhs.open_sha512_digest);
     }
 };
 
 static std::set<std::string> files_read;
 static std::set<std::string> files_written;
 
-//static std::set<ofile*, ofile_compare> files_openned;
-static std::unordered_map<std::string, ofile*> filename_to_ofile;
+static std::set<ofile, ofile_compare> files_openned;
 
 char* get_sha512(std::string filename){
 
@@ -102,8 +102,8 @@ char* file_sha512_and_copy(std::string filename){
 
     char* sha512_file_digest = get_sha512(filename);
 
-    std::string newfile = file_directory + sha512_file_digest + std::to_string((int)std::time(NULL));
-    copy_file( filename, newfile );
+    std::string newfile = file_directory + sha512_file_digest;
+    copy_file( filename, newfile);
 
     return sha512_file_digest;
 }
@@ -126,30 +126,15 @@ int opened_file(char* program_name, char* file_name, int did_create){
     printf("Open %s by %s(%d)\n", file_name, program_name, did_create);
 	if(!isDirectory(file_name)){
 		char* digest = file_sha512_and_copy(std::string(file_name));
-		ofile* ftemp = (ofile*) malloc(sizeof(struct ofile));
-
-		ftemp->filename = file_name;
-		ftemp->open_sha512_digest = digest;
-		ftemp->close_sha512_digest = NULL;
-		ftemp->written = false;
-		ftemp->read = false;
-		if (did_create){
-			ftemp->created = true;
-		}else{
-			ftemp->created = false;
-		}
-
-		filename_to_ofile[std::string(file_name)] = ftemp;
+		files_openned.insert({file_name, digest, NULL, false, false});
 	}
     return 0;
 }
-
 
 int read_from_file(char* program_name, char* file_name){
     // Method that is invoked when the read is perfromed from a particular file
     // That method is needed to find dependencies for the program
     files_read.insert(std::string(file_name));
-	filename_to_ofile[std::string(file_name)]->read = true;
     return 0;
 }
 
@@ -159,7 +144,6 @@ int write_to_file(char* program_name, char* file_name){
     // In here I need to store the file into the config and make it indexable for the finding
 
     files_written.insert(std::string(file_name));
-	filename_to_ofile[std::string(file_name)]->written = true;
     return 0;
 }
 
@@ -172,11 +156,8 @@ int file_close(char* program_name, char* file_name){
     printf("Close %s by %s\n", file_name, program_name);
 	//TODO: need to be carefyul here. It might be the case that the file is moved, without a closed handle
 	//TODO: add the outlined check
-	if(!isDirectory(file_name)){
-		char* digest=file_sha512_and_copy(std::string(file_name));
-		filename_to_ofile[std::string(file_name)]->close_sha512_digest = digest;
-	}
-
+	if(!isDirectory(file_name))
+		free(file_sha512_and_copy(std::string(file_name)));
     return 0;
 }
 
@@ -209,30 +190,21 @@ int write_recipe(std::string filename, char* sha512_digest, char* program_name, 
         mkdir(newfile.c_str(), 0700);
     }
 
-/*
-	ofile* t_ofile = filename_to_ofile[filename];
-	printf("Filename: %s\n Open Digest: %s\n Close Digest: %s\n Writen: %d\n Read: %d\n Created: %d\n", t_ofile->filename, t_ofile->open_sha512_digest, t_ofile->close_sha512_digest, t_ofile->written, t_ofile->read, t_ofile->created);
-*/
-    newfile += "/" + filename + "_" + std::to_string(time(0));
+    newfile += "/" + filename;
     FILE* recipe_file = fopen (newfile.c_str(), "wb+");
 
     printf("Writing recipe %s\n", newfile.c_str());
 
-	fwrite(filename.c_str(), 1, strlen(filename.c_str()), recipe_file);
+    fwrite(filename.c_str(), 1, strlen(filename.c_str()), recipe_file);
     fwrite("\n", 1, 1, recipe_file);
+	fwrite("COMMAND:", 1, 8, recipe_file);
     fwrite(program_name, 1, strlen(program_name), recipe_file);
     fwrite("\n", 1, 1, recipe_file);
+	fwrite("DEPEND:", 1, 7, recipe_file);
 	for (std::set<std::string>::iterator it=read_files.begin(); it!=read_files.end(); ++it){
-        const char* temp_filename = ((std::string)*it).c_str();
-		ofile* t_ofile = filename_to_ofile[temp_filename];
-
-		fwrite(t_ofile->filename, 1, strlen(t_ofile->filename), recipe_file);
-		fwrite(" ", 1, 1, recipe_file);
-		fwrite(t_ofile->open_sha512_digest, 1, strlen(t_ofile->open_sha512_digest), recipe_file);
-		fwrite(" ", 1, 1, recipe_file);
-		fwrite(t_ofile->close_sha512_digest, 1, strlen(t_ofile->close_sha512_digest), recipe_file);
-
-    	fwrite("\n", 1, 1, recipe_file);
+        const char* temp = ((std::string)*it).c_str();
+        fwrite(temp, 1, strlen(temp), recipe_file);
+        fwrite(" ", 1, 1, recipe_file);
     }
 
     fclose(recipe_file);

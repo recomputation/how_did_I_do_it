@@ -19,4 +19,5 @@ $(OBJ_FOLDER)/%.o:$(SRC_FOLDER)/%.cpp
 
 clean:
 	rm -f $(OBJ_FOLDER)/*.o
-
+	rm -rf /tmp/ilia_*
+	rm -f cat_*

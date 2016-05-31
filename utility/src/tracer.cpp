@@ -134,7 +134,6 @@ int exec_trace(pid_t child, char* pn){
 
                 if (descriptiors_to_filename[temp_fd]){
                     file_close(pn, descriptiors_to_filename[temp_fd]);
-                    free(descriptiors_to_filename[temp_fd]);
                     descriptiors_to_filename[temp_fd]=NULL;
                 }
                 break;
@@ -185,11 +184,6 @@ int exec_trace(pid_t child, char* pn){
 }
 
 int trace(int argc, char **argv, char* pn){
-	if (argc < 2) {
-        fprintf(stderr, "Usage: %s executable args\n", argv[0]);
-        return 1;
-    }
-
     pid_t child;
     child = fork();
     if(child == 0) {
