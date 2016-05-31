@@ -34,7 +34,7 @@ void traceme(int argc, char* argv[]){
 
 int main (int argc, char *argv[]){
     if (argc < 2){
-        printf("Usage: %s -f filename_to_find | -m md5_of_file | command_to_execute\n", argv[0]);
+        printf("Usage: %s -f filename_to_find | -m sha512_of_file | command_to_execute\n", argv[0]);
         return 1;
     }
 
@@ -45,8 +45,8 @@ int main (int argc, char *argv[]){
 			printf ("Finding the file: %s\n", optarg);
 			return find_recipe_by_name(optarg);
 		case 'm':
-		    printf ("Looking for md5 of the file %s\n", optarg);
-		    return find_recipe_by_md5(optarg);
+		    printf ("Looking for sha512 of the file %s\n", optarg);
+		    return find_recipe_by_sha512(optarg);
 	    }
     }
 	traceme(argc, argv);

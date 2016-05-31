@@ -30,8 +30,7 @@ int rename_file(char* program_name, char* from, char* to);
 // 1 if should
 int should_track(char* file_name);
 
+char* get_sha512(std::string filename);
+char* file_sha512_and_copy(std::string filename);
 
-char* get_md5(std::string filename);
-char* file_md5_and_copy(std::string filename);
-
-int write_recipe(std::string filename, char* md5_digest, char* program_name, std::set<std::string> read_files);
+int write_recipe(std::string filename, char* sha512_digest, char* program_name, std::set<std::string> read_files);

@@ -5,7 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <openssl/md5.h>
+#include <openssl/sha.h>
 
 #include "../headers/communicator.h"
 #include "../headers/helper_utilities.h"
@@ -18,9 +18,10 @@ static std::set<std::string> files_read;
 static std::set<std::string> files_written;
 
 
-char* get_md5(std::string filename){
+char* get_sha512(std::string filename){
 
-	unsigned char c[MD5_DIGEST_LENGTH];
+	unsigned char digest[SHA512_DIGEST_LENGTH];
+
 	FILE* inFile = fopen (filename.c_str(), "rb");
 
 	//TODO: check if the file is accessible
@@ -29,21 +30,20 @@ char* get_md5(std::string filename){
 		return NULL;
 	}
 
-    MD5_CTX mdContext;
+    SHA512_CTX mdContext;
     int bytes;
 	int dataSize = 1024;
     char data[dataSize];
 
-    MD5_Init (&mdContext);
+    SHA512_Init(&mdContext);
     while ((bytes = fread (data, 1, dataSize, inFile)) != 0){
-        MD5_Update (&mdContext, data, bytes);
+        SHA512_Update(&mdContext, data, bytes);
 	}
-    MD5_Final (c,&mdContext);
+    SHA512_Final(digest,&mdContext);
 
-	char* index = (char*) malloc(sizeof(char)*(MD5_DIGEST_LENGTH+1));
-
-	for(int i = 0; i < MD5_DIGEST_LENGTH; i++) sprintf(&index[i], "%02x", (unsigned int)c[i]);
-	index[MD5_DIGEST_LENGTH]='\0';
+	char* index = (char*) malloc(sizeof(char)*(SHA512_DIGEST_LENGTH*2+1));
+    for (int i = 0; i < SHA512_DIGEST_LENGTH; i++)
+        sprintf(&index[i*2], "%02x", (unsigned int)digest[i]);
 
     fclose(inFile);
 
@@ -79,14 +79,14 @@ int copy_file(std::string orig_filename, std::string new_filename){
     return 0;
 }
 
-char* file_md5_and_copy(std::string filename){
+char* file_sha512_and_copy(std::string filename){
 
-    char* md5_file_digest = get_md5(filename);
+    char* sha512_file_digest = get_sha512(filename);
 
-    std::string newfile = file_directory + md5_file_digest;
+    std::string newfile = file_directory + sha512_file_digest;
     copy_file( filename, newfile);
 
-    return md5_file_digest;
+    return sha512_file_digest;
 }
 
 void initiate_communication(){
@@ -106,7 +106,7 @@ int opened_file(char* program_name, char* file_name, int did_create){
     // Save it to the control file as well
     printf("Open %s by %s(%d)\n", file_name, program_name, did_create);
 	if(!isDirectory(file_name)){
-		free(file_md5_and_copy(std::string(file_name)));
+		free(file_sha512_and_copy(std::string(file_name)));
 	}
     return 0;
 }
@@ -137,7 +137,7 @@ int file_close(char* program_name, char* file_name){
 	//TODO: need to be carefyul here. It might be the case that the file is moved, without a closed handle
 	//TODO: add the outlined check
 	if(!isDirectory(file_name))
-		free(file_md5_and_copy(std::string(file_name)));
+		free(file_sha512_and_copy(std::string(file_name)));
     return 0;
 }
 
@@ -153,7 +153,7 @@ int close_communication(char* program_name){
     // Need to process the file here to create the dependencies file
 
     for(std::set<std::string>::iterator it=files_written.begin(); it!=files_written.end(); ++it){
-        char* index = file_md5_and_copy((std::string)*it);
+        char* index = file_sha512_and_copy((std::string)*it);
         //TODO: do something with the arguments and the file itself
         write_recipe((std::string)*it, index, program_name, files_read);
         free(index);
@@ -161,9 +161,9 @@ int close_communication(char* program_name){
     return 0;
 }
 
-int write_recipe(std::string filename, char* md5_digest, char* program_name, std::set<std::string> read_files){
+int write_recipe(std::string filename, char* sha512_digest, char* program_name, std::set<std::string> read_files){
 
-    std::string newfile = recipe_directory + std::string(md5_digest);
+    std::string newfile = recipe_directory + std::string(sha512_digest);
 
     struct stat st;
     if (stat(newfile.c_str(), &st) == -1) {

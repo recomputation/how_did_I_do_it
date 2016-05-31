@@ -5,13 +5,14 @@
 #include <dirent.h>
 
 #include "../headers/communicator.h"
+#include "../headers/finder.h"
 
 extern std::set<std::string> files_read;
 extern std::set<std::string> files_written;
 
-int find_recipe_by_md5(char* md5_digest){
+int find_recipe_by_sha512(char* sha512_digest){
 
-    std::string newfile = recipe_directory + std::string(md5_digest);
+    std::string newfile = recipe_directory + std::string(sha512_digest);
 
 	DIR* d;
   	struct dirent *dir;
@@ -48,12 +49,12 @@ int find_recipe_by_md5(char* md5_digest){
 }
 
 int find_recipe_by_name(char* filename){
-	char* md5_of_file = get_md5(filename);
+	char* sha512_of_file = get_sha512(filename);
 
-	if(!md5_of_file){
+	if(!sha512_of_file){
 		printf("File access issues");
 		return -1;
 	}
 
-	return find_recipe_by_md5(md5_of_file);
+	return find_recipe_by_sha512(sha512_of_file);
 }
