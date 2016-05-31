@@ -1,20 +1,18 @@
-#include <sys/stat.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
-#include <openssl/sha.h>
-
 #include "../headers/communicator.h"
 #include "../headers/helper_utilities.h"
 
 #include <iostream>
 #include <set>
 #include <string>
+#include <string.h>
 #include <unordered_map>
 #include <ctime>
+#include <fstream>
+#include <sys/stat.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#include <openssl/sha.h>
 
 struct ofile{
     char* filename;
@@ -41,60 +39,53 @@ char* get_sha512(std::string filename){
 
 	unsigned char digest[SHA512_DIGEST_LENGTH];
 
-	FILE* inFile = fopen (filename.c_str(), "rb");
+	std::ifstream inFile (filename.c_str());
 
-	//TODO: check if the file is accessible
-	if (!inFile){
+	if (!inFile.is_open()){
 		printf("Failed to open the file\n");
 		return NULL;
 	}
 
     SHA512_CTX mdContext;
-    int bytes;
-	int dataSize = 1024;
-    char data[dataSize];
-
     SHA512_Init(&mdContext);
-    while ((bytes = fread (data, 1, dataSize, inFile)) != 0){
-        SHA512_Update(&mdContext, data, bytes);
-	}
+
+	std::string line;
+    while ( getline (inFile, line) ){
+        SHA512_Update(&mdContext, line.c_str(), line.length());
+    }
     SHA512_Final(digest,&mdContext);
 
 	char* index = (char*) malloc(sizeof(char)*(SHA512_DIGEST_LENGTH*2+1));
     for (int i = 0; i < SHA512_DIGEST_LENGTH; i++)
         sprintf(&index[i*2], "%02x", (unsigned int)digest[i]);
 
-    fclose(inFile);
+	inFile.close();
 
     return index;
 }
 
 int copy_file(std::string orig_filename, std::string new_filename){
-    FILE* toFile = fopen(new_filename.c_str(), "wb+");
-	FILE* inFile = fopen (orig_filename.c_str(), "rb");
 
-    if(!toFile || !inFile){
+    std::ifstream inFile(orig_filename.c_str());
+    std::ofstream toFile(new_filename.c_str());
+
+    if (!inFile.is_open() || !toFile.is_open()){
+        if(inFile.is_open()){
+            inFile.close();
+        }
+        if (toFile.is_open()){
+            toFile.close();
+        }
         return -1;
     }
 
-	int dataSize = 1024;
-    char data[dataSize];
-    ssize_t nread;
-	while ((nread = fread(data, 1, dataSize, inFile)) > 0){
-        char* out_ptr = data;
-        ssize_t nwritten;
-        do {
-            nwritten = fwrite(out_ptr, 1, nread, toFile);
-            if (nwritten >= 0)
-            {
-                nread -= nwritten;
-                out_ptr += nwritten;
-            }
-        } while (nread > 0);
+	std::string line;
+    while ( getline (inFile,line) ){
+      toFile << line << '\n';
     }
 
-	fclose(inFile);
-	fclose(toFile);
+    inFile.close();
+    toFile.close();
     return 0;
 }
 
@@ -102,7 +93,7 @@ char* file_sha512_and_copy(std::string filename){
 
     char* sha512_file_digest = get_sha512(filename);
 
-    std::string newfile = file_directory + sha512_file_digest + std::to_string((int)std::time(NULL));
+    std::string newfile = file_directory + sha512_file_digest + "_" + std::to_string((int)std::time(NULL));
     copy_file( filename, newfile );
 
     return sha512_file_digest;
@@ -214,28 +205,19 @@ int write_recipe(std::string filename, char* sha512_digest, char* program_name, 
 	printf("Filename: %s\n Open Digest: %s\n Close Digest: %s\n Writen: %d\n Read: %d\n Created: %d\n", t_ofile->filename, t_ofile->open_sha512_digest, t_ofile->close_sha512_digest, t_ofile->written, t_ofile->read, t_ofile->created);
 */
     newfile += "/" + filename + "_" + std::to_string(time(0));
-    FILE* recipe_file = fopen (newfile.c_str(), "wb+");
+
+	std::ofstream recipe_file(newfile.c_str());
 
     printf("Writing recipe %s\n", newfile.c_str());
 
-	fwrite(filename.c_str(), 1, strlen(filename.c_str()), recipe_file);
-    fwrite("\n", 1, 1, recipe_file);
-    fwrite(program_name, 1, strlen(program_name), recipe_file);
-    fwrite("\n", 1, 1, recipe_file);
+	recipe_file << filename << std::endl << program_name << std::endl;
+
 	for (std::set<std::string>::iterator it=read_files.begin(); it!=read_files.end(); ++it){
         const char* temp_filename = ((std::string)*it).c_str();
 		ofile* t_ofile = filename_to_ofile[temp_filename];
-
-		fwrite(t_ofile->filename, 1, strlen(t_ofile->filename), recipe_file);
-		fwrite(" ", 1, 1, recipe_file);
-		fwrite(t_ofile->open_sha512_digest, 1, strlen(t_ofile->open_sha512_digest), recipe_file);
-		fwrite(" ", 1, 1, recipe_file);
-		fwrite(t_ofile->close_sha512_digest, 1, strlen(t_ofile->close_sha512_digest), recipe_file);
-
-    	fwrite("\n", 1, 1, recipe_file);
+		recipe_file << t_ofile->filename << " " << t_ofile->open_sha512_digest << " " << t_ofile->close_sha512_digest << std::endl;
     }
 
-    fclose(recipe_file);
-
+	recipe_file.close();
     return 0;
 }

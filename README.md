@@ -12,7 +12,7 @@ The utility developed allows the user to run anything and produce a list of inpu
 - Saves recipes to the designated folder (26 May 2016)
 - Allows lookup by a path to the file (29 May 2016)
 - Allows lookup by a md5 digest (29 May 2016)
-- Transition to C++ (29-30 May 2016)
+- Transition to C++ (29-31 May 2016)
 - Migrate to sha512 (31 May 2016)
 
 #TODO:
@@ -26,5 +26,4 @@ The utility developed allows the user to run anything and produce a list of inpu
 - Keep the current working directory in the recipe file (Mid priority)
 
 #Currently working on the:
-- Migration to C++, to make development faster
 - Add script generation (High priority)

@@ -1,11 +1,12 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <dirent.h>
 
 #include "../headers/communicator.h"
 #include "../headers/finder.h"
+
+#include <iostream>
+#include <fstream>
 
 extern std::set<std::string> files_read;
 extern std::set<std::string> files_written;
@@ -17,33 +18,31 @@ int find_recipe_by_sha512(char* sha512_digest){
 	DIR* d;
   	struct dirent *dir;
   	d = opendir(newfile.c_str());
-	char buffer[100];
 
   	if (d){
     	while ((dir = readdir(d)) != NULL){
 			if (strcmp(dir->d_name, ".") && strcmp(dir->d_name, "..")){
                 std::string file_name = newfile + "/" + std::string(dir->d_name);
 
-				FILE* t_file = fopen( file_name.c_str(), "r");
+                std::ifstream t_file (file_name.c_str());
 
-				if (!t_file){
+				if (!t_file.is_open()){
 					continue;
 				}
 
-				printf("===============\n");
+                std::cout << "===============" << std::endl;
+                std::string line;
 
-				while (fgets(buffer, sizeof(buffer), t_file)) {
-					printf("%s", buffer);
-				}
-				fclose(t_file);
-
-				printf("\n");
+                while (getline(t_file, line)){
+                    std::cout << line << std::endl;
+                }
+                std::cout << std::endl;
 			}
 		}
 		closedir(d);
 		return 0;
     }else{
-        printf("Recipe doesnot exist!\n");
+        std::cout << "Recipe doesnot exist!" << std::endl;
         return -1;
     }
 }
