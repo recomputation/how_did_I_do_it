@@ -18,7 +18,7 @@ void traceme(int argc, char* argv[]){
     }
     pn_size+=1;
 
-    char* pn = (char*) malloc( sizeof(char)*pn_size);
+    char* pn = new char[pn_size];
 
     strcpy(pn, argv[1]);
     for(int i=2; i < argc; i++){
@@ -29,7 +29,7 @@ void traceme(int argc, char* argv[]){
 	trace(argc, argv, pn);
 
     close_communication(pn);
-    free(pn);
+    delete pn;
 }
 
 int main (int argc, char *argv[]){

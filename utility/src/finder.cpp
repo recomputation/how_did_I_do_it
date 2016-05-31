@@ -1,4 +1,3 @@
-#include <string.h>
 #include <sys/stat.h>
 #include <dirent.h>
 
@@ -7,6 +6,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <string>
 
 extern std::set<std::string> files_read;
 extern std::set<std::string> files_written;
@@ -15,13 +15,16 @@ int find_recipe_by_sha512(char* sha512_digest){
 
     std::string newfile = recipe_directory + std::string(sha512_digest);
 
+    std::string me = std::string(".");
+    std::string up_me = std::string("..");
+
 	DIR* d;
   	struct dirent *dir;
   	d = opendir(newfile.c_str());
 
   	if (d){
     	while ((dir = readdir(d)) != NULL){
-			if (strcmp(dir->d_name, ".") && strcmp(dir->d_name, "..")){
+			if (me.compare(std::string(dir->d_name)) && up_me.compare(std::string(dir->d_name))){
                 std::string file_name = newfile + "/" + std::string(dir->d_name);
 
                 std::ifstream t_file (file_name.c_str());

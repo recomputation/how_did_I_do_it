@@ -73,6 +73,7 @@ int exec_trace(pid_t child, char* pn){
     int retval;
     int temp_fd;
     char* str;
+    char* to;
     int filecreate = 0 ;
     int num_proc = 1;
 
@@ -133,7 +134,7 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    file_close(pn, descriptiors_to_filename[temp_fd]);
+                    file_close(descriptiors_to_filename[temp_fd]);
                     descriptiors_to_filename[temp_fd]=NULL;
                 }
                 break;
@@ -147,7 +148,7 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    read_from_file(pn, descriptiors_to_filename[temp_fd]);
+                    read_from_file(descriptiors_to_filename[temp_fd]);
                 }
                 break;
             case SYS_write:
@@ -160,20 +161,19 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    write_to_file(pn, descriptiors_to_filename[temp_fd]);
+                    write_to_file(descriptiors_to_filename[temp_fd]);
                 }
                 break;
-            /*case SYS_rename:
+            case SYS_rename:
                 ptrace(PTRACE_GETREGS, child, NULL, &regs);
                 str = read_string(child, get_arg(regs,0));
-                char* to = read_string(child, get_arg(regs,1));
+                to = read_string(child, get_arg(regs,1));
+
                 ptrace(PTRACE_SYSCALL, child, NULL, NULL);
                 waitpid(child, &status, 0);
 
-				rename_file(conn, pn, str, to);
-				free(str);
-				free(to);
-                break;*/
+				rename_file(str, to);
+                break;
             default:
                 //printf("The system call: %s(%ld)\n", decode_sc(answ), answ);
                 ptrace(PTRACE_SYSCALL, child, 0, 0);
