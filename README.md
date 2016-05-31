@@ -15,9 +15,15 @@ The utility developed allows the user to run anything and produce a list of inpu
 
 #TODO:
 - Check support for cloning (Low priority)
+- Keeping stdin/stdout
+- Check for non-closed files
+- NixOS(?) - Preserve the folder hierarchy NOT YET
+- Warnings on non-relative file names
+- Files name rules
 - Add script generation (High priority)
 - Follow current working directory (Mid priority)
 - Keep the current working directory in the recipe file (Mid priority)
 
 #Currently working on the:
 - Migration to C++, to make development faster
+- Migrate to sha512
