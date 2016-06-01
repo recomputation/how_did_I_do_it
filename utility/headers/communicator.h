@@ -5,6 +5,28 @@
 static const std::string file_directory("/tmp/ilia_fd/");
 static const std::string recipe_directory("/tmp/ilia_recipes/");
 
+struct ofile{
+    std::string filename;
+    std::string open_sha512_digest;
+    std::string close_sha512_digest;
+	bool written;
+	bool read;
+	bool created;
+};
+
+struct ofile_compare {
+    bool operator() (ofile* lhs, ofile* rhs) const{
+        return !lhs->filename.compare(rhs->filename) && !lhs->open_sha512_digest.compare(rhs->open_sha512_digest);
+    }
+};
+
+struct set_string_compare{
+  bool operator()(std::string* lhs, std::string* rhs) const
+  {
+    return *lhs < *rhs;
+  }
+};
+
 int save_data(int fd, char* data, size_t size);
 int close_communication(char* file_name);
 int count_num (int n);
@@ -29,6 +51,6 @@ int rename_file(char* from, char* to);
 int should_track(std::string file_name);
 
 char* get_sha512(std::string filename);
-std::string file_sha512_and_copy(std::string filename);
+std::string* file_sha512_and_copy(std::string filename);
 
-int write_recipe(std::string filename, std::string sha512_digest, char* program_name, std::set<std::string> read_files);
+int write_recipe(std::string filename, std::string sha512_digest, char* program_name);

@@ -7,6 +7,7 @@
 #include "../headers/communicator.h"
 #include "../headers/finder.h"
 
+#include <iostream>
 
 void traceme(int argc, char* argv[]){
 
@@ -29,7 +30,8 @@ void traceme(int argc, char* argv[]){
 	trace(argc, argv, pn);
 
     close_communication(pn);
-    delete pn;
+
+    delete[] pn;
 }
 
 int main (int argc, char *argv[]){
@@ -38,15 +40,23 @@ int main (int argc, char *argv[]){
         return 1;
     }
 
-	int opt;
+	int r, opt;
 	while ((opt = getopt (argc, argv, "f:m:")) != -1){
 		switch (opt){
 		case 'f':
 			printf ("Finding the file: %s\n", optarg);
-			return find_recipe_by_name(optarg);
+			r = find_recipe_by_name(std::string(optarg));
+			if (r < 0){
+                std::cout << "File not found" << std::endl;
+            }
+            return r;
 		case 'm':
 		    printf ("Looking for sha512 of the file %s\n", optarg);
-		    return find_recipe_by_sha512(optarg);
+            r = find_recipe_by_sha512(std::string(optarg));
+            if (r < 0){
+                std::cout << "File not found" << std::endl;
+            }
+		    return r;
 	    }
     }
 	traceme(argc, argv);
