@@ -17,6 +17,7 @@ static std::set<std::string*, set_string_compare> files_written;
 
 //static std::set<ofile*, ofile_compare> files_openned;
 static std::unordered_map<std::string, ofile*> filename_to_ofile;
+static char* parent_cwd;
 
 char* get_sha512(std::string filename){
 
@@ -85,8 +86,9 @@ std::string* file_sha512_and_copy(std::string filename){
     return new std::string(sha512_file_digest);
 }
 
-void initiate_communication(){
+void initiate_communication(char* cwd){
     struct stat st;
+    parent_cwd = cwd;
 
     if (stat(file_directory.c_str(), &st) == -1) {
         mkdir(file_directory.c_str(), 0700);
@@ -96,14 +98,14 @@ void initiate_communication(){
     }
 }
 
-int opened_file(char* program_name, char* file_name, int did_create){
-    if(file_name[0] == '/'){
+int opened_file(std::string file_name, bool did_create){
+/*    if(file_name[0] == '/'){
         std::cout << "WARNING: ABSOLUTE PATH FOR THE FILE" << std::endl;
-    }
+    }*/
+
     // Method invoked when a file is openned.
     // Need to check if the file is not some sysfile and make a copy of the file here
     // Save it to the control file as well
-    printf("Open %s by %s(%d)\n", file_name, program_name, did_create);
 	if(!isDirectory(file_name)){
         std::string* digest = file_sha512_and_copy(std::string(file_name));
 		ofile* ftemp = new ofile;
@@ -112,12 +114,8 @@ int opened_file(char* program_name, char* file_name, int did_create){
 		ftemp->open_sha512_digest = *digest;
 		ftemp->written = false;
 		ftemp->read = false;
-
-		if (did_create){
-			ftemp->created = true;
-		}else{
-			ftemp->created = false;
-		}
+        ftemp->created = did_create;
+        ftemp->closed = false;
 
 		filename_to_ofile[std::string(file_name)] = ftemp;
 	}
@@ -125,7 +123,7 @@ int opened_file(char* program_name, char* file_name, int did_create){
 }
 
 
-int read_from_file(char* file_name){
+int read_from_file(std::string file_name){
     // Method that is invoked when the read is perfromed from a particular file
     // That method is needed to find dependencies for the program
     files_read.insert(new std::string(file_name));
@@ -133,7 +131,7 @@ int read_from_file(char* file_name){
     return 0;
 }
 
-int write_to_file(char* file_name){
+int write_to_file(std::string file_name){
     // Method that is invoked when the write is happened to a particular file
     // That method is needed to find the files produced by particular programs
     // In here I need to store the file into the config and make it indexable for the finding
@@ -143,8 +141,7 @@ int write_to_file(char* file_name){
     return 0;
 }
 
-int rename_file(char* from, char* to){
-    printf("Rename from %s to %s\n", from, to);
+int rename_file(std::string from, std::string to){
     filename_to_ofile[std::string(to)] = filename_to_ofile[std::string(from)];
 
     std::string* to_find = new std::string(from);
@@ -159,16 +156,17 @@ int rename_file(char* from, char* to){
 	return 0;
 }
 
-int file_close(char* file_name){
+int file_close(std::string file_name){
     // Note if the file was closed without any changes (why was it open in the first place?)
 	//TODO: need to be carefyul here. It might be the case that the file is moved, without a closed handle
 	//TODO: add the outlined check
 	if(!isDirectory(file_name)){
-        std::string* digest=file_sha512_and_copy(std::string(file_name));
+        std::string* digest=file_sha512_and_copy(file_name);
         if (!digest){
             return -1;
         }
-		filename_to_ofile[std::string(file_name)]->close_sha512_digest = *digest;
+		filename_to_ofile[file_name]->close_sha512_digest = *digest;
+		filename_to_ofile[file_name]->closed = true;
 	}
 
     return 0;
@@ -182,29 +180,36 @@ int should_track(std::string file_name){
     return 0;
 }
 
-int close_communication(char* program_name){
+int close_communication(std::string program_name){
     // Need to process the file here to create the dependencies file
+
+    for(std::unordered_map<std::string, ofile*>::iterator it=filename_to_ofile.begin(); it!=filename_to_ofile.end(); ++it){
+        if (!it->second->closed){
+           file_close(it->second->filename.c_str());
+           it->second->closed=true;
+        }
+    }
 
     for(std::set<std::string*>::iterator it=files_written.begin(); it!=files_written.end(); ++it){
         std::string* index = file_sha512_and_copy(*(std::string*)*it);
         if (!index){
             continue;
         }
-        //TODO: do something with the arguments and the file itself
         write_recipe(*(std::string*)*it, *index, program_name);
     }
     return 0;
 }
 
-int write_recipe(std::string filename, std::string sha512_digest, char* program_name){
+int write_recipe(std::string filename, std::string sha512_digest, std::string program_name){
 
-    std::string newfile = recipe_directory + std::string(sha512_digest);
+    std::string newfile = recipe_directory + sha512_digest;
 
     struct stat st;
     if (stat(newfile.c_str(), &st) == -1) {
         mkdir(newfile.c_str(), 0700);
     }
 
+    //TODO: yeah, was too smart. I see why they preserve the hierarchy
     newfile += "/_" + std::to_string(time(0));
     /*if(filename[0] == '/'){
         newfile += "/_" + std::to_string(time(0));
@@ -214,9 +219,7 @@ int write_recipe(std::string filename, std::string sha512_digest, char* program_
     */
 	std::ofstream recipe_file(newfile.c_str());
 
-    printf("Writing recipe %s\n", newfile.c_str());
-
-	recipe_file << filename << std::endl << program_name << std::endl;
+	recipe_file << filename << std::endl << parent_cwd << std::endl << program_name << std::endl;
 
 	for (std::set<std::string*>::iterator it=files_read.begin(); it!=files_read.end(); ++it){
         const char* temp_filename = (*(std::string*)*it).c_str();

@@ -67,7 +67,7 @@ int exec_trace(pid_t child, char* pn){
 
     char* descriptiors_to_filename[20]={NULL};
     ptrace(PTRACE_ATTACH, child, NULL, NULL);
-    ptrace(PTRACE_SETOPTIONS, child, 0, PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK); //)| PTRACE_O_TRACECLONE | PTRACE_O_TRACEEXEC | PTRACE_O_TRACEVFORKDONE | PTRACE_O_TRACEEXIT);
+    ptrace(PTRACE_SETOPTIONS, child, 0, PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK | PTRACE_O_TRACECLONE | PTRACE_O_TRACEEXEC | PTRACE_O_TRACEVFORKDONE | PTRACE_O_TRACEEXIT);
 
     struct stat openfile;
     int retval;
@@ -110,9 +110,9 @@ int exec_trace(pid_t child, char* pn){
 
                 // Doing detection of the file
                 if (stat(str, &openfile)< 0){
-                    filecreate = 1;
+                    filecreate = true;
                 }else{
-                    filecreate = 0;
+                    filecreate = false;
                 }
 
                 ptrace(PTRACE_SYSCALL, child, NULL, NULL);
@@ -121,7 +121,7 @@ int exec_trace(pid_t child, char* pn){
 
                 if (retval > 0 && should_track(str) ){
                     descriptiors_to_filename[retval] = str;
-                    opened_file(pn, str, filecreate);
+                    opened_file(std::string(str), filecreate);
                 }
                 break;
 
@@ -134,7 +134,7 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    file_close(descriptiors_to_filename[temp_fd]);
+                    file_close(std::string(descriptiors_to_filename[temp_fd]));
                     descriptiors_to_filename[temp_fd]=NULL;
                 }
                 break;
@@ -148,7 +148,7 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    read_from_file(descriptiors_to_filename[temp_fd]);
+                    read_from_file(std::string(descriptiors_to_filename[temp_fd]));
                 }
                 break;
             case SYS_write:
@@ -161,7 +161,7 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
-                    write_to_file(descriptiors_to_filename[temp_fd]);
+                    write_to_file(std::string(descriptiors_to_filename[temp_fd]));
                 }
                 break;
             case SYS_rename:
@@ -172,7 +172,7 @@ int exec_trace(pid_t child, char* pn){
                 ptrace(PTRACE_SYSCALL, child, NULL, NULL);
                 waitpid(child, &status, 0);
 
-				rename_file(str, to);
+				rename_file(std::string(str), std::string(to));
                 break;
             default:
                 //printf("The system call: %s(%ld)\n", decode_sc(answ), answ);

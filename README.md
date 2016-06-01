@@ -14,16 +14,16 @@ The utility developed allows the user to run anything and produce a list of inpu
 - Allows lookup by a md5 digest (29 May 2016)
 - Transition to C++ (29-31 May 2016)
 - Migrate to sha512 (31 May 2016)
+- Add script generation (31 May-1 June) // However there are issues in detection itself (see makefile example)
+- Warnings on non-relative file names(1 June)
+- Keep the current working directory in the recipe file(1 June)
+- Close for non-closed files (1 June)
 
 #TODO:
-- Check support for cloning (Low priority)
-- Keeping stdin/stdout
-- Check for non-closed files
 - NixOS(?) - Preserve the folder hierarchy NOT YET
-- Warnings on non-relative file names
-- Files name rules
-- Follow current working directory (Mid priority)
-- Keep the current working directory in the recipe file (Mid priority)
+- Follow current working directory (Mid priority) (that is a bit complicated)
 
 #Currently working on the:
-- Add script generation (High priority)
+- Check support for cloning (Low priority)
+- Keeping stdin/stdout
+- Files name rules (They exist, just not in a separate config)

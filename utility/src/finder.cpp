@@ -29,6 +29,7 @@ bool have_recipe(std::string sha512_digest){
 
 int find_recipe_by_sha512(std::string sha512_digest){
 
+    expanded.insert(new std::string(sha512_digest));
     std::string newfile = recipe_directory + sha512_digest;
 
     std::cout << "#Recipe: " << newfile << std::endl;
@@ -51,14 +52,16 @@ int find_recipe_by_sha512(std::string sha512_digest){
 				}
 
                 std::string orig_filename;
+                std::string cwd;
                 std::string command;
                 std::string line;
 
                 getline(t_file, orig_filename); // Original filename
+                getline(t_file, cwd);
                 getline(t_file, command); // Command used to generate
 
                 std::cout << "#Building: " << orig_filename << std::endl << command << std::endl;
-
+                std::cout << "#CWD:" << cwd << std::endl;
                 //All of the dependencies
                 while (getline(t_file, line)){
                     std::vector<std::string> s_line = split(line, ' ');
@@ -66,10 +69,10 @@ int find_recipe_by_sha512(std::string sha512_digest){
                     std::string* t_f = new std::string(need_file);
 
                     if (expanded.find(t_f) == expanded.end()){
-                        expanded.insert(t_f);
                         if (have_recipe(need_file)){
                             find_recipe_by_sha512(need_file);
                         }else{
+                            expanded.insert(t_f);
                             std::cout << "Need to copy: " << s_line[0] << std::endl;
                         }
                     }

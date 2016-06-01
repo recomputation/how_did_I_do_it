@@ -11,7 +11,10 @@
 
 void traceme(int argc, char* argv[]){
 
-    initiate_communication();
+    char cwd[100];
+    getcwd(cwd, sizeof(cwd));
+
+    initiate_communication(cwd);
 
     int pn_size = 0;
     for(int i=1; i<argc; i++){
@@ -29,7 +32,7 @@ void traceme(int argc, char* argv[]){
 
 	trace(argc, argv, pn);
 
-    close_communication(pn);
+    close_communication(std::string(pn));
 
     delete[] pn;
 }
