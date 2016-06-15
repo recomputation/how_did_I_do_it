@@ -65,9 +65,9 @@ int exec_trace(pid_t child, char* pn){
     struct user_regs_struct regs;
     waitpid(child, &status, 0);
 
-    char* descriptiors_to_filename[20]={NULL};
+    char* descriptiors_to_filename[128]={NULL};
     ptrace(PTRACE_ATTACH, child, NULL, NULL);
-    ptrace(PTRACE_SETOPTIONS, child, 0, PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK | PTRACE_O_TRACECLONE | PTRACE_O_TRACEEXEC | PTRACE_O_TRACEVFORKDONE | PTRACE_O_TRACEEXIT);
+    ptrace(PTRACE_SETOPTIONS, child, 0, PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK | PTRACE_O_TRACECLONE | PTRACE_O_TRACEEXEC | PTRACE_O_TRACEVFORK | PTRACE_O_TRACEVFORKDONE | PTRACE_O_TRACEEXIT);
 
     struct stat openfile;
     int retval;
@@ -81,13 +81,15 @@ int exec_trace(pid_t child, char* pn){
         while(1){
             ptrace(PTRACE_SYSCALL, child, 0, 0);
             child = waitpid(-1, &status, __WALL);
-            if (status >> 16 == PTRACE_EVENT_FORK) {
+
+            if ((status >> 8 == (SIGTRAP | PTRACE_EVENT_FORK << 8)) || (status >> 8 == (SIGTRAP | PTRACE_EVENT_VFORK << 8)) || (status >> 8 == (SIGTRAP | PTRACE_EVENT_CLONE<<8))){
                 long newpid;
                 ptrace(PTRACE_GETEVENTMSG, child, NULL, (long) &newpid);
                 ptrace(PTRACE_SYSCALL, newpid, NULL, NULL);
                 num_proc++;
                 continue;
             }
+
             if (WIFSTOPPED(status) && WSTOPSIG(status) & 0x80){
                 break;
             }
@@ -104,10 +106,19 @@ int exec_trace(pid_t child, char* pn){
 
         long answ = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG, NULL);
         switch(answ){
+            /*case SYS_execve:
+                printf("Execve(%d):\n", child);
+                printf("\t0: %s\n", read_string(child, get_arg(regs,0)));
+                printf("\t1: %s\n", read_string(child, get_arg(regs,1)));
+                printf("\t2: %s\n", read_string(child, get_arg(regs,2)));
+                printf("\t3: %s\n", read_string(child, get_arg(regs,3)));
+                printf("\t4: %s\n", read_string(child, get_arg(regs,4)));
+                retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
+                printf("RETURN: %d\n", retval);
+                break;*/
             case SYS_open:
                 ptrace(PTRACE_GETREGS, child, NULL, &regs);
                 str=read_string(child, get_arg(regs, 0));
-
                 // Doing detection of the file
                 if (stat(str, &openfile)< 0){
                     filecreate = true;
@@ -120,6 +131,7 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (retval > 0 && should_track(str) ){
+                    printf("Open(%d):%s\n", child, str);
                     descriptiors_to_filename[retval] = str;
                     opened_file(std::string(str), filecreate);
                 }
@@ -134,6 +146,7 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
+                    printf("Close(%d):%s\n", child, descriptiors_to_filename[temp_fd]);
                     file_close(std::string(descriptiors_to_filename[temp_fd]));
                     descriptiors_to_filename[temp_fd]=NULL;
                 }
@@ -148,6 +161,7 @@ int exec_trace(pid_t child, char* pn){
                 retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
                 if (descriptiors_to_filename[temp_fd]){
+                    printf("Reading from(%d):%s\n", child, descriptiors_to_filename[temp_fd]);
                     read_from_file(std::string(descriptiors_to_filename[temp_fd]));
                 }
                 break;
@@ -175,7 +189,13 @@ int exec_trace(pid_t child, char* pn){
 				rename_file(std::string(str), std::string(to));
                 break;
             default:
-                //printf("The system call: %s(%ld)\n", decode_sc(answ), answ);
+                /*printf("The system call: %s(%ld)\n", decode_sc(answ).c_str(), answ);
+                ptrace(PTRACE_GETREGS, child, NULL, &regs);
+                printf("\t0: %s\n", read_string(child, get_arg(regs,0)));
+                printf("\t1: %s\n", read_string(child, get_arg(regs,1)));
+                printf("\t2: %s\n", read_string(child, get_arg(regs,2)));
+                printf("\t3: %s\n", read_string(child, get_arg(regs,3)));
+                */
                 ptrace(PTRACE_SYSCALL, child, 0, 0);
                 break;
         }

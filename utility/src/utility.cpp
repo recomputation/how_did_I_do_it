@@ -44,7 +44,7 @@ int main (int argc, char *argv[]){
     }
 
 	int r, opt;
-	while ((opt = getopt (argc, argv, "f:m:")) != -1){
+	while ((opt = getopt (1, argv, "f:m:")) != -1){
 		switch (opt){
 		case 'f':
 			printf ("Finding the file: %s\n", optarg);

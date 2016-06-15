@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <unistd.h>
 
 //Method used to give number or characters taken by a particular number
 //After trying out different methods to calculate it this one has proven to be the fastest
@@ -45,3 +46,10 @@ std::vector<std::string> split(const std::string &s, char delim) {
     return elems;
 }
 
+int should_track(std::string file_name){
+    //TODO: maybe add a set of rules here or something?
+    if ( file_name[0] != '/' || (file_name[0] == '/' && file_name.find(getlogin()) != std::string::npos)){
+        return 1;
+    }
+    return 0;
+}

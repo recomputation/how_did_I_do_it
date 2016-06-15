@@ -142,6 +142,7 @@ int write_to_file(std::string file_name){
 }
 
 int rename_file(std::string from, std::string to){
+    // Not sure if that is the best way to handle rename
     filename_to_ofile[std::string(to)] = filename_to_ofile[std::string(from)];
 
     std::string* to_find = new std::string(from);
@@ -172,14 +173,6 @@ int file_close(std::string file_name){
     return 0;
 }
 
-int should_track(std::string file_name){
-    //TODO: maybe add a set of rules here or something?
-    if ( file_name[0] != '/' || (file_name[0] == '/' && file_name.find(getlogin()) != std::string::npos)){
-        return 1;
-    }
-    return 0;
-}
-
 int close_communication(std::string program_name){
     // Need to process the file here to create the dependencies file
 
@@ -195,6 +188,7 @@ int close_communication(std::string program_name){
         if (!index){
             continue;
         }
+        std::cout << "Writing:" << *(std::string*)*it <<  " " << *index << std::endl;
         write_recipe(*(std::string*)*it, *index, program_name);
     }
     return 0;
