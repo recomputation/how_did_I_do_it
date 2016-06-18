@@ -18,12 +18,16 @@ The utility developed allows the user to run anything and produce a list of inpu
 - Warnings on non-relative file names(1 June)
 - Keep the current working directory in the recipe file(1 June)
 - Close for non-closed files (1 June)
-
-#TODO:
-- NixOS(?) - Preserve the folder hierarchy NOT YET
+- Check support for cloning (Low priority)
+- Files name rules (They exist, just not in a separate config)
+- Proper handler management
+- Fix the concurrency issues
+- Tests work
 - Follow current working directory (Mid priority) (that is a bit complicated)
 
+#TODO:
+
 #Currently working on the:
-- Check support for cloning (Low priority)
-- Keeping stdin/stdout
-- Files name rules (They exist, just not in a separate config)
+- Keeping stdin/stdout (Maybe some dup magic here?)
+- NixOS(?) - Preserve the folder hierarchy NOT YET
+- Path figuring out.
