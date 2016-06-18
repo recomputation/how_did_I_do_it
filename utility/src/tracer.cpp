@@ -15,6 +15,13 @@
 #include "../headers/tracer.h"
 #include "../headers/syscall_decoder.h"
 #include "../headers/communicator.h"
+#include "../headers/helper_utilities.h"
+
+#include <string>
+#include <iostream>
+#include <unordered_map>
+
+using namespace std;
 
 #if __WORDSIZE == 64
 #define REG ORIG_RAX
@@ -23,6 +30,193 @@
 #define REG ORIG_EAX
 #define REG2 EAX
 #endif
+
+#define is_fork(s) ((s>>8)==(SIGTRAP | PTRACE_EVENT_FORK << 8))
+#define is_vfork(s) ((s>>8)==(SIGTRAP | PTRACE_EVENT_VFORK << 8))
+#define is_clone(s) ((s>>8)==(SIGTRAP | PTRACE_EVENT_CLONE << 8))
+
+extern const int ptrace_options;
+
+static unordered_map<int, std::unordered_map<int, std::string*>> pid_to_descriptors_to_filename;
+static unordered_map<int, std::string*> pid_to_cwd;
+
+int on_open(pid_t child, bool verbose){
+    struct user_regs_struct regs;
+    std::string* path_s;
+
+    ptrace(PTRACE_GETREGS, child, NULL, &regs);
+    char* str=read_string(child, get_arg(regs, 0));
+
+    if (pid_to_cwd.find(child) != pid_to_cwd.end() && str[0] != '/'){
+        path_s = new std::string(*pid_to_cwd[child] + "/" + std::string(str));
+    }else{
+        path_s = new std::string(str);
+    }
+
+
+    bool filecreate;
+    struct stat openfile;
+
+    if (stat(path_s->c_str(), &openfile)< 0){
+        filecreate = true;
+    }else{
+        filecreate = false;
+    }
+
+    int status;
+    ptrace(PTRACE_SYSCALL, child, NULL, NULL);
+
+    waitpid(child, &status, 0);
+    int retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
+
+    if (retval > 0 && should_track(str)){
+        if(!opened_file(*path_s, filecreate)){
+            if (verbose){
+                cout << "[" << child << "] OPEN " << endl;
+                cout << "\tpath: " << *path_s << endl;
+                cout << "\tTRACKING..." << endl;
+            }
+            pid_to_descriptors_to_filename[child][retval]=path_s;
+        }else{
+            std::cout << "\tFailed to open: " << *path_s << std::endl;
+            delete path_s;
+        }
+    }
+
+    free(str);
+    return 0;
+}
+
+int on_close(pid_t child, bool verbose){
+    struct user_regs_struct regs;
+    ptrace(PTRACE_GETREGS, child, NULL, &regs);
+
+    int temp_fd = get_arg(regs, 0), status;
+    ptrace(PTRACE_SYSCALL, child, NULL, NULL);
+    waitpid(child, &status, 0);
+
+    if (pid_to_descriptors_to_filename[child].find(temp_fd) != pid_to_descriptors_to_filename[child].end()){
+        if(verbose){
+            cout << "[" << child << "] CLOSE\n\tpath: " << *pid_to_descriptors_to_filename[child][temp_fd] << endl;
+        }
+        file_close(*pid_to_descriptors_to_filename[child][temp_fd]);
+        string* tt = pid_to_descriptors_to_filename[child][temp_fd];
+        pid_to_descriptors_to_filename[child].erase(temp_fd);
+        delete tt;
+    }
+    return 0;
+}
+
+int on_dup(pid_t child, bool verbose){
+    struct user_regs_struct regs;
+    ptrace(PTRACE_GETREGS, child, NULL, &regs);
+    int from = get_arg(regs,0);
+    int to = get_arg(regs,1);
+    if(verbose){
+        std::cout << "[" << child << "] DUP2: " << from << " " << to << std::endl;
+    }
+
+    if(pid_to_descriptors_to_filename[child].find(from) != pid_to_descriptors_to_filename[child].end()){
+        pid_to_descriptors_to_filename[child][to] = new std::string(*pid_to_descriptors_to_filename[child][from]);
+    }
+    return 0;
+}
+
+int on_read(pid_t child, bool verbose){
+    struct user_regs_struct regs;
+    ptrace(PTRACE_GETREGS, child, NULL, &regs);
+    int temp_fd = get_arg(regs, 0);
+
+    char* str=read_string(child, get_arg(regs, 0));
+    ptrace(PTRACE_SYSCALL, child, NULL, NULL);
+
+    if (pid_to_descriptors_to_filename[child].find(temp_fd) != pid_to_descriptors_to_filename[child].end()){
+        if (verbose){
+            std::cout << "[" << child << "] READ\n\tpath: " << *pid_to_descriptors_to_filename[child][temp_fd] << "\n\tstring: " << str << std::endl;
+        }
+        read_from_file(*pid_to_descriptors_to_filename[child][temp_fd]);
+    }
+
+    free(str);
+    return 0;
+}
+
+int on_execve(pid_t child, bool verbose){
+    struct user_regs_struct regs;
+    ptrace(PTRACE_GETREGS, child, NULL, &regs);
+    char* str = read_string(child, get_arg(regs, 0));
+
+    if (verbose){
+        std::cout << "[" << child << "] EXECVE\n\tcmd: " << str << std::endl;
+    }
+
+    free(str);
+
+    return 0;
+}
+
+int on_write(pid_t child, bool verbose){
+    struct user_regs_struct regs;
+    ptrace(PTRACE_GETREGS, child, NULL, &regs);
+    int temp_fd= get_arg(regs, 0);
+
+    char* str=read_string(child, get_arg(regs, 1));
+    ptrace(PTRACE_SYSCALL, child, NULL, NULL);
+
+    if (pid_to_descriptors_to_filename[child].find(temp_fd) != pid_to_descriptors_to_filename[child].end()){
+        write_to_file(*pid_to_descriptors_to_filename[child][temp_fd]);
+
+        if (verbose){
+            std::cout << "[" << child << "] WRITE\n\tpath: " << *pid_to_descriptors_to_filename[child][temp_fd] << "\n\tstring: " << str << std::endl;
+        }
+    }
+
+    free(str);
+    return 0;
+}
+
+int on_rename(pid_t child, bool verbose){
+    struct user_regs_struct regs;
+    ptrace(PTRACE_GETREGS, child, NULL, &regs);
+    char* str = read_string(child, get_arg(regs,0));
+    char* to = read_string(child, get_arg(regs,1));
+
+    string re_from = string(str);
+    string re_to = string(to);
+
+    if (pid_to_cwd.find(child) != pid_to_cwd.end() && re_from[0] != '/'){
+        re_from= *pid_to_cwd[child] + "/" + re_from;
+    }
+
+    if (pid_to_cwd.find(child) != pid_to_cwd.end() && re_to[0] != '/'){
+        re_to= *pid_to_cwd[child] + "/" + re_to;
+    }
+
+    if (verbose){
+        std::cout << "[" << child << "] RENAME\n\tfrom: " << re_from << "\n\tto: " << re_to << std::endl;
+    }
+
+    rename_file(re_from, re_to);
+
+    free(str);
+    free(to);
+    return 0;
+}
+
+int on_chdir(pid_t child, bool verbose){
+    struct user_regs_struct regs;
+    ptrace(PTRACE_GETREGS, child, NULL, &regs);
+    char* str = read_string(child, get_arg(regs,0));
+
+    pid_to_cwd[child] = new std::string(str);
+
+    if (verbose){
+        std::cout << "Change directory to(" << child << "): " << str << std::endl;
+    }
+
+    free(str);
+    return 0;
+}
 
 int exec_child(int argc, char **argv){
 	char *args [argc+1];
@@ -33,48 +227,17 @@ int exec_child(int argc, char **argv){
     return execvp(args[0], args);
 }
 
-char *read_string(pid_t child, unsigned long addr) {
-    char *val = (char*) malloc(4096);
-    int allocated = 4096;
-    int read = 0;
-    unsigned long tmp;
-    while (1) {
-        // I feel pretty bad when do that
-        if (read + (int)(sizeof(tmp)) > allocated) {
-            allocated *= 2;
-            val = (char*) realloc(val, allocated);
-        }
-        tmp = ptrace(PTRACE_PEEKDATA, child, addr + read);
-        if(errno != 0) {
-            val[read] = 0;
-            break;
-        }
-        memcpy(val + read, &tmp, sizeof(tmp));
-        if (memchr(&tmp, 0, sizeof(tmp)) != NULL)
-            break;
-        read += sizeof(tmp);
-    }
-    return val;
-}
-
-
 // Child and the program name
-int exec_trace(pid_t child, char* pn){
+int exec_trace(pid_t child, char* pn, char* start_pwd, bool verbose){
 
     int status;
-    struct user_regs_struct regs;
     waitpid(child, &status, 0);
 
-    char* descriptiors_to_filename[128]={NULL};
-    ptrace(PTRACE_ATTACH, child, NULL, NULL);
-    ptrace(PTRACE_SETOPTIONS, child, 0, PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK | PTRACE_O_TRACECLONE | PTRACE_O_TRACEEXEC | PTRACE_O_TRACEVFORK | PTRACE_O_TRACEVFORKDONE | PTRACE_O_TRACEEXIT);
+    pid_to_cwd[child] = new std::string(start_pwd);
 
-    struct stat openfile;
-    int retval;
-    int temp_fd;
-    char* str;
-    char* to;
-    int filecreate = 0 ;
+    ptrace(PTRACE_ATTACH, child, NULL, NULL);
+    ptrace(PTRACE_SETOPTIONS, child, 0, ptrace_options);
+
     int num_proc = 1;
 
     while(1){
@@ -82,12 +245,18 @@ int exec_trace(pid_t child, char* pn){
             ptrace(PTRACE_SYSCALL, child, 0, 0);
             child = waitpid(-1, &status, __WALL);
 
-            if ((status >> 8 == (SIGTRAP | PTRACE_EVENT_FORK << 8)) || (status >> 8 == (SIGTRAP | PTRACE_EVENT_VFORK << 8)) || (status >> 8 == (SIGTRAP | PTRACE_EVENT_CLONE<<8))){
+            if (is_fork(status) || is_vfork(status) || is_clone(status)){
                 long newpid;
                 ptrace(PTRACE_GETEVENTMSG, child, NULL, (long) &newpid);
+                ptrace(PTRACE_ATTACH, newpid, NULL, NULL);
                 ptrace(PTRACE_SYSCALL, newpid, NULL, NULL);
+                ptrace(PTRACE_SETOPTIONS, newpid, 0, ptrace_options);
+
+                pid_to_cwd[newpid] = pid_to_cwd[child];
                 num_proc++;
-                continue;
+                if(verbose){
+                    std::cout << "[" << child << "] NEW: " << newpid << "\n\tProcesses running: "<< num_proc << std::endl;
+                }
             }
 
             if (WIFSTOPPED(status) && WSTOPSIG(status) & 0x80){
@@ -96,6 +265,14 @@ int exec_trace(pid_t child, char* pn){
 
             if (WIFEXITED(status)){
                 num_proc--;
+                //TODO: Need to clean up the memory here
+                if (verbose){
+                    std::cout << "[" << child << "] EXIT " << std::endl;
+                }
+                pid_to_descriptors_to_filename.erase(child);
+                if (pid_to_cwd.find(child) != pid_to_cwd.end()){
+                    pid_to_cwd.erase(child);
+                }
                 break;
             }
         }
@@ -106,109 +283,37 @@ int exec_trace(pid_t child, char* pn){
 
         long answ = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG, NULL);
         switch(answ){
-            /*case SYS_execve:
-                printf("Execve(%d):\n", child);
-                printf("\t0: %s\n", read_string(child, get_arg(regs,0)));
-                printf("\t1: %s\n", read_string(child, get_arg(regs,1)));
-                printf("\t2: %s\n", read_string(child, get_arg(regs,2)));
-                printf("\t3: %s\n", read_string(child, get_arg(regs,3)));
-                printf("\t4: %s\n", read_string(child, get_arg(regs,4)));
-                retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
-                printf("RETURN: %d\n", retval);
-                break;*/
-            case SYS_open:
-                ptrace(PTRACE_GETREGS, child, NULL, &regs);
-                str=read_string(child, get_arg(regs, 0));
-                // Doing detection of the file
-                if (stat(str, &openfile)< 0){
-                    filecreate = true;
-                }else{
-                    filecreate = false;
-                }
-
-                ptrace(PTRACE_SYSCALL, child, NULL, NULL);
-                waitpid(child, &status, 0);
-                retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
-
-                if (retval > 0 && should_track(str) ){
-                    printf("Open(%d):%s\n", child, str);
-                    descriptiors_to_filename[retval] = str;
-                    opened_file(std::string(str), filecreate);
-                }
-                break;
-
-            case SYS_close:
-                ptrace(PTRACE_GETREGS, child, NULL, &regs);
-                temp_fd = get_arg(regs, 0);
-
-                ptrace(PTRACE_SYSCALL, child, NULL, NULL);
-                waitpid(child, &status, 0);
-                retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
-
-                if (descriptiors_to_filename[temp_fd]){
-                    printf("Close(%d):%s\n", child, descriptiors_to_filename[temp_fd]);
-                    file_close(std::string(descriptiors_to_filename[temp_fd]));
-                    descriptiors_to_filename[temp_fd]=NULL;
-                }
-                break;
-            case SYS_read:
-                ptrace(PTRACE_GETREGS, child, NULL, &regs);
-                temp_fd = get_arg(regs, 0);
-                //str="";//read_string(child, get_arg(regs, 1));
-
-                ptrace(PTRACE_SYSCALL, child, NULL, NULL);
-                waitpid(child, &status, 0);
-                retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
-
-                if (descriptiors_to_filename[temp_fd]){
-                    printf("Reading from(%d):%s\n", child, descriptiors_to_filename[temp_fd]);
-                    read_from_file(std::string(descriptiors_to_filename[temp_fd]));
-                }
-                break;
-            case SYS_write:
-                ptrace(PTRACE_GETREGS, child, NULL, &regs);
-                temp_fd= get_arg(regs, 0);
-                //str=read_string(child, get_arg(regs, 1));
-
-                ptrace(PTRACE_SYSCALL, child, NULL, NULL);
-                waitpid(child, &status, 0);
-                retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
-
-                if (descriptiors_to_filename[temp_fd]){
-                    write_to_file(std::string(descriptiors_to_filename[temp_fd]));
-                }
-                break;
-            case SYS_rename:
-                ptrace(PTRACE_GETREGS, child, NULL, &regs);
-                str = read_string(child, get_arg(regs,0));
-                to = read_string(child, get_arg(regs,1));
-
-                ptrace(PTRACE_SYSCALL, child, NULL, NULL);
-                waitpid(child, &status, 0);
-
-				rename_file(std::string(str), std::string(to));
-                break;
+            case SYS_execve: on_execve(child, verbose); break;
+            case SYS_open: on_open(child, verbose); break;
+            case SYS_close: on_close(child, verbose); break;
+            case SYS_read: on_read(child, verbose); break;
+            case SYS_write: on_write(child, verbose); break;
+            case SYS_rename: on_rename(child, verbose); break;
+            case SYS_chdir: on_chdir(child, verbose); break;
+            case SYS_dup2: on_dup(child, verbose); break;
             default:
-                /*printf("The system call: %s(%ld)\n", decode_sc(answ).c_str(), answ);
+                /*std::cout << "[" << child << "]The system call: " << decode_sc(answ) << "(" << answ << ")" << std::endl;
+                ptrace(PTRACE_SYSCALL, child, 0, 0);
+                struct user_regs_struct regs;
                 ptrace(PTRACE_GETREGS, child, NULL, &regs);
                 printf("\t0: %s\n", read_string(child, get_arg(regs,0)));
                 printf("\t1: %s\n", read_string(child, get_arg(regs,1)));
                 printf("\t2: %s\n", read_string(child, get_arg(regs,2)));
                 printf("\t3: %s\n", read_string(child, get_arg(regs,3)));
                 */
-                ptrace(PTRACE_SYSCALL, child, 0, 0);
+
                 break;
         }
     }
 	return 0;
 }
 
-int trace(int argc, char **argv, char* pn){
+int trace(int argc, char **argv, char* pn, char* start_pwd, bool verbose){
     pid_t child;
     child = fork();
     if(child == 0) {
 		return exec_child(argc-1, argv+1);
     } else {
-        return exec_trace(child, pn);
+        return exec_trace(child, pn, start_pwd, verbose);
     }
 }

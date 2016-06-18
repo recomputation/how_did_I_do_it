@@ -13,6 +13,8 @@ utility: $(objs) $(headers)
 	$(info $(objs))
 	
 	$(CC) $(CC_FLAGS) -o utility $(objs)
+	cp utility ../queens-ilia
+	mv utility s
 
 $(OBJ_FOLDER)/%.o:$(SRC_FOLDER)/%.cpp
 	$(CC) -c $< $(CC_FLAGS) -o $@

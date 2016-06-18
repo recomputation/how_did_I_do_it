@@ -6,6 +6,10 @@
 #include <sstream>
 #include <vector>
 #include <unistd.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <sys/ptrace.h>
+#include <string.h>
 
 //Method used to give number or characters taken by a particular number
 //After trying out different methods to calculate it this one has proven to be the fastest
@@ -53,3 +57,29 @@ int should_track(std::string file_name){
     }
     return 0;
 }
+
+char* read_string(pid_t child, unsigned long addr) {
+    char *val = (char*) malloc(4096);
+    int allocated = 4096;
+    int read = 0;
+    unsigned long tmp;
+    while (1) {
+        // I feel pretty bad when do that
+        if (read + (int)(sizeof(tmp)) > allocated) {
+            allocated *= 2;
+            val = (char*) realloc(val, allocated);
+        }
+        tmp = ptrace(PTRACE_PEEKDATA, child, addr + read);
+        if(errno != 0) {
+            val[read] = 0;
+            break;
+        }
+        memcpy(val + read, &tmp, sizeof(tmp));
+        if (memchr(&tmp, 0, sizeof(tmp)) != NULL)
+            break;
+        read += sizeof(tmp);
+    }
+    return val;
+}
+
+

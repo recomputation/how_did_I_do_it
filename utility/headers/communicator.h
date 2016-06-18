@@ -1,14 +1,15 @@
 // Header file for the functions that should be defined in the communication interface
 #include <string>
+#include <iostream>
 #include <set>
 
 static const std::string file_directory("/tmp/ilia_fd/");
 static const std::string recipe_directory("/tmp/ilia_recipes/");
 
 struct ofile{
-    std::string filename;
-    std::string open_sha512_digest;
-    std::string close_sha512_digest;
+    std::string* filename;
+    std::string* open_sha512_digest;
+    std::string* close_sha512_digest;
 	bool written;
 	bool read;
 	bool created;
@@ -17,7 +18,7 @@ struct ofile{
 
 struct ofile_compare {
     bool operator() (ofile* lhs, ofile* rhs) const{
-        return !lhs->filename.compare(rhs->filename) && !lhs->open_sha512_digest.compare(rhs->open_sha512_digest);
+        return *(lhs->filename) < *(rhs->filename);
     }
 };
 
