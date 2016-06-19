@@ -228,7 +228,7 @@ int exec_child(int argc, char **argv){
 }
 
 // Child and the program name
-int exec_trace(pid_t child, char* pn, char* start_pwd, bool verbose){
+int exec_trace(pid_t child, char* start_pwd, bool verbose){
 
     int status;
     waitpid(child, &status, 0);
@@ -308,12 +308,12 @@ int exec_trace(pid_t child, char* pn, char* start_pwd, bool verbose){
 	return 0;
 }
 
-int trace(int argc, char **argv, char* pn, char* start_pwd, bool verbose){
+int trace(int argc, char **argv, char* start_pwd, bool verbose){
     pid_t child;
     child = fork();
     if(child == 0) {
-		return exec_child(argc-1, argv+1);
+		return exec_child(argc, argv);
     } else {
-        return exec_trace(child, pn, start_pwd, verbose);
+        return exec_trace(child, start_pwd, verbose);
     }
 }

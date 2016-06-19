@@ -17,25 +17,15 @@ void traceme(int argc, char* argv[], bool verbose){
 
     initiate_communication(cwd);
 
-    int pn_size = 0;
-    for(int i=1; i<argc; i++){
-        pn_size += strlen(argv[i]) + 1;
-    }
-    pn_size+=1;
+	trace(argc, argv, cwd, verbose);
 
-    char* pn = new char[pn_size];
+    std::string t_pn = "";
 
-    strcpy(pn, argv[1]);
-    for(int i=2; i < argc; i++){
-        strcat(pn, " ");
-        strcat(pn, argv[i]);
+    for (int i=0; i < argc; i++){
+        t_pn += std::string(argv[i]);
     }
 
-	trace(argc, argv, pn, cwd, verbose);
-
-    close_communication(std::string(pn));
-
-    delete[] pn;
+    close_communication(t_pn);
 }
 
 int main (int argc, char *argv[]){
@@ -44,26 +34,63 @@ int main (int argc, char *argv[]){
         return 1;
     }
 
-	int r, opt;
+	int opt;
 	bool verbose = false;//true;
-	while ((opt = getopt (0, argv, "f:m:")) != -1){
+    bool findme = false, findmysha = false, builder = false;
+    std::string findme_a, findmysha_a, builder_a;
+
+	while ((opt = getopt (argc, argv, "b:v:f:m:")) != -1){
         switch (opt){
+            case 'v':
+                verbose = true;
+                break;
             case 'f':
-                std::cout << "Attempting to find the file: " << optarg << std::endl;
-                r = find_recipe_by_name(std::string(optarg));
-                if (r < 0){
-                    std::cout << "File not found" << std::endl;
-                }
-                return r;
+                findme = true;
+                findme_a = optarg;
+                break;
+            case 'b':
+                builder = true;
+                builder_a = optarg;
+                break;
             case 'm':
-                std::cout << "Attempting to find the sha512 of the file: " << optarg << std::endl;
-                r = find_recipe_by_sha512(std::string(optarg));
-                if (r < 0){
-                    std::cout << "File not found" << std::endl;
-                }
-                return r;
-            }
+                findmysha = true;
+                findmysha_a = optarg;
+                break;
+        }
     }
+
+    int r;
+
+    if (builder){
+        std::cout << "Building the environment for the file: " << builder_a << std::endl;
+        r = build_environment(builder_a);
+        if (r < 0){
+            std::cout << "File not found" <<std::endl;
+        }
+        return r;
+    }
+
+    if (findme){
+        std::cout << "Attempting to find the file: " << findme_a << std::endl;
+        r = find_recipe_by_name(findme_a);
+        if (r < 0){
+            std::cout << "File not found" << std::endl;
+        }
+        return r;
+    }
+
+    if (findmysha){
+            std::cout << "Attempting to find the sha512 of the file: " << findmysha_a << std::endl;
+            r = find_recipe_by_sha512(findmysha_a);
+            if (r < 0){
+                std::cout << "File not found" << std::endl;
+            }
+            return r;
+    }
+
+    argc -= optind;
+    argv += optind;
+
 	traceme(argc, argv, verbose);
     return 0;
 }

@@ -203,7 +203,7 @@ int close_communication(std::string program_name){
     for(std::set<std::string*>::iterator it=files_written.begin(); it!=files_written.end(); ++it){
         std::string* index = file_sha512_and_copy(*(std::string*)*it);
         if (!index){
-            std::cout << "CANT WRITE: " << *(std::string*)*it << std::endl;
+            //std::cout << "CANT WRITE: " << *(std::string*)*it << std::endl;
             continue;
         }
         std::cout << "Writing:" << *(std::string*)*it <<  " " << *index << std::endl;

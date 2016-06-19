@@ -29,7 +29,7 @@ struct set_string_compare{
   }
 };
 
-int close_communication(std::string file_name);
+int close_communication(std::string program_name);
 int count_num (int n);
 
 void initiate_communication(char* cwd);

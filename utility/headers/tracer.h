@@ -5,7 +5,7 @@
 using namespace std;
 static const int ptrace_options = PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK | PTRACE_O_TRACECLONE | PTRACE_O_TRACEVFORK | PTRACE_O_TRACEEXIT;
 
-int trace(int argc, char** argv, char* pn, char* start_pwd, bool verbose);
+int trace(int argc, char** argv, char* start_pwd, bool verbose);
 
 int on_read(pid_t child, bool verbose);
 int on_write(pid_t child, bool verbose);
