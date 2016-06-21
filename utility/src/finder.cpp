@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <dirent.h>
 
+#include <unistd.h>
+#include <fcntl.h>
+
 #include "../headers/communicator.h"
 #include "../headers/finder.h"
 #include "../headers/helper_utilities.h"
@@ -126,11 +129,13 @@ int build_recipe(std::string sha512_digest, std::string tmp_dirname){
 
                 std::string orig_filename;
                 std::string cwd;
+                std::string permissions;
                 std::string command;
                 std::string line;
 
                 getline(t_file, orig_filename); // Original filename
                 //TODO: the issue is if the file is dependent on the absence of folders we might screw it up
+                //TODO: Maybe add the permissions copying to the folders as well
                 folderize(orig_filename, tmp_dirname);
 
                 getline(t_file, cwd);
@@ -140,6 +145,8 @@ int build_recipe(std::string sha512_digest, std::string tmp_dirname){
                     std::vector<std::string> s_line = split(line, ' ');
                     std::string need_file = s_line[1];
                     std::string need_file_sha = s_line[2];
+                    std::string permissions = s_line[3];
+
                     std::string* t_f = new std::string(need_file);
 
                     if (expanded.find(t_f) == expanded.end()){
@@ -151,6 +158,12 @@ int build_recipe(std::string sha512_digest, std::string tmp_dirname){
                             if (need_file_sha.compare("0")!=0){
                                 std::string from = file_directory + need_file_sha + std::string(dir->d_name);
                                 std::string to = tmp_dirname + s_line[0];
+
+                                int f = open(to.c_str(), O_CREAT, atoi(permissions.c_str()));
+                                if(f > 0){
+                                    close(f);
+                                }
+
                                 copy_file(from, to);
                             }
                        }

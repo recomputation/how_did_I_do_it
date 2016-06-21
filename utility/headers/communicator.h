@@ -10,6 +10,7 @@ struct ofile{
     std::string* filename;
     std::string* open_sha512_digest;
     std::string* close_sha512_digest;
+	int permissions;
 	bool written;
 	bool read;
 	bool created;

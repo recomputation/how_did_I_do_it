@@ -91,6 +91,10 @@ int opened_file(std::string file_name, bool did_create){
         }
 		ofile* ftemp = new ofile;
 
+        struct stat st;
+        stat(file_name.c_str(), &st);
+        ftemp->permissions = st.st_mode;
+
         std::string* t_filename = new std::string(file_name);
 
 		ftemp->filename = t_filename;
@@ -214,11 +218,11 @@ int write_recipe(std::string filename, std::string sha512_digest, std::string pr
 	for (std::set<std::string*>::iterator it=files_read.begin(); it!=files_read.end(); ++it){
         const char* temp_filename = (*(std::string*)*it).c_str();
 		ofile* t_ofile = filename_to_ofile[temp_filename];
-		recipe_file << *(t_ofile->filename) << " " << *(t_ofile->open_sha512_digest) << " " << *(t_ofile->close_sha512_digest) << std::endl;
+		recipe_file << *(t_ofile->filename) << " " << *(t_ofile->open_sha512_digest) << " " << *(t_ofile->close_sha512_digest) << " " << t_ofile->permissions << std::endl;
     }
 
     for (std::set<std::string*>::iterator it=need_dirs.begin(); it!=need_dirs.end(); ++it){
-        recipe_file << (*(std::string*)*it) << " " << 0 << " " << 0 << std::endl;
+        recipe_file << (*(std::string*)*it) << " " << 0 << " " << 0 << " " << 0 << std::endl;
     }
 
 	recipe_file.close();
