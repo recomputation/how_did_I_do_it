@@ -100,7 +100,8 @@ int find_recipe_by_name(std::string filename){
 	return find_recipe_by_sha512(std::string(sha512_of_file));
 }
 
-int build_recipe(std::string sha512_digest){
+int build_recipe(std::string sha512_digest, std::string tmp_dirname){
+
     expanded.insert(new std::string(sha512_digest));
     std::string newfile = recipe_directory + sha512_digest;
 
@@ -129,25 +130,30 @@ int build_recipe(std::string sha512_digest){
                 std::string line;
 
                 getline(t_file, orig_filename); // Original filename
+                //TODO: the issue is if the file is dependent on the absence of folders we might screw it up
+                folderize(orig_filename, tmp_dirname);
+
                 getline(t_file, cwd);
                 getline(t_file, command); // Command used to generate
 
-                std::cout << "#Building: " << orig_filename << std::endl << command << std::endl;
-                std::cout << "#CWD:" << cwd << std::endl;
-
-                //All of the dependencies
                 while (getline(t_file, line)){
                     std::vector<std::string> s_line = split(line, ' ');
                     std::string need_file = s_line[1];
+                    std::string need_file_sha = s_line[2];
                     std::string* t_f = new std::string(need_file);
 
                     if (expanded.find(t_f) == expanded.end()){
                         if (have_recipe(need_file)){
-                            build_recipe(need_file);
+                            build_recipe(need_file, tmp_dirname);
                         }else{
                             expanded.insert(t_f);
-                            std::cout << "Need to copy: " << s_line[0] << std::endl;
-                        }
+                            folderize(s_line[0], tmp_dirname);
+                            if (need_file_sha.compare("0")!=0){
+                                std::string from = file_directory + need_file_sha + std::string(dir->d_name);
+                                std::string to = tmp_dirname + s_line[0];
+                                copy_file(from, to);
+                            }
+                       }
                     }
                 }
                 std::cout << std::endl;
@@ -173,5 +179,5 @@ int build_environment(std::string filename){
         return -1;
     }
 
-    return build_recipe(std::string(sha512_of_file));
+    return build_recipe(std::string(sha512_of_file), std::string(tmp_dirname));
 }

@@ -23,3 +23,4 @@ clean:
 	rm -f $(OBJ_FOLDER)/*.o
 	rm -rf /tmp/ilia_*
 	rm -f cat_*
+	rm -rf /tmp/tmpdir.*

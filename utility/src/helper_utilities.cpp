@@ -11,6 +11,9 @@
 #include <sys/ptrace.h>
 #include <string.h>
 
+#include <iostream>
+#include <fstream>
+
 //Method used to give number or characters taken by a particular number
 //After trying out different methods to calculate it this one has proven to be the fastest
 int count_num (int n) {
@@ -55,6 +58,46 @@ int should_track(std::string file_name){
     if ( file_name[0] != '/' || (file_name[0] == '/' && file_name.find(getlogin()) != std::string::npos)){
         return 1;
     }
+    return 0;
+}
+
+void folderize(std::string path, std::string tmp_dirname){
+
+    std::vector<std::string> sv = split(path, '/');
+    struct stat st;
+    std::string curr = std::string(tmp_dirname);
+
+    //Maybe do something about copying the permissions
+    for(std::vector<std::string>::size_type i = 0; i != sv.size()-1; i++) {
+        curr += "/" + sv[i];
+        if (stat(curr.c_str(), &st) == -1 ){
+            mkdir(curr.c_str(), 0700);
+        }
+    }
+}
+
+int copy_file(std::string orig_filename, std::string new_filename){
+
+    std::ifstream inFile(orig_filename.c_str());
+    std::ofstream toFile(new_filename.c_str());
+
+    if (!inFile.is_open() || !toFile.is_open()){
+        if(inFile.is_open()){
+            inFile.close();
+        }
+        if (toFile.is_open()){
+            toFile.close();
+        }
+        return -1;
+    }
+
+	std::string line;
+    while ( getline (inFile,line) ){
+      toFile << line << '\n';
+    }
+
+    inFile.close();
+    toFile.close();
     return 0;
 }
 

@@ -24,10 +24,14 @@ The utility developed allows the user to run anything and produce a list of inpu
 - Fix the concurrency issues
 - Tests work
 - Follow current working directory (Mid priority) (that is a bit complicated)
+- NixOS(?) - Preserve the folder hierarchy (Kind of)
+- Build fake environment in the tmp folder
 
 #TODO:
 
 #Currently working on the:
 - Keeping stdin/stdout (Maybe some dup magic here?)
-- NixOS(?) - Preserve the folder hierarchy NOT YET
 - Path figuring out.
+- Beautiful cleaning
+- Need to versioning of files
+- Execution files

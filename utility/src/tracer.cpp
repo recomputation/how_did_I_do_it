@@ -47,12 +47,24 @@ int on_open(pid_t child, bool verbose){
     ptrace(PTRACE_GETREGS, child, NULL, &regs);
     char* str=read_string(child, get_arg(regs, 0));
 
-    if (pid_to_cwd.find(child) != pid_to_cwd.end() && str[0] != '/'){
-        path_s = new std::string(*pid_to_cwd[child] + "/" + std::string(str));
-    }else{
-        path_s = new std::string(str);
+    if(str[0] == '/' && verbose){
+        std::cout << "WARNING: ABSOLUTE PATH FOR THE FILE MAY CAUSE ERRORS: " << std::string(str) << std::endl;
     }
 
+    std::string t_path;
+    if (pid_to_cwd.find(child) != pid_to_cwd.end() && str[0] != '/'){
+        t_path = *pid_to_cwd[child] + "/" + std::string(str);
+    }else{
+        t_path = std::string(str);
+    }
+
+    char* rp=realpath(t_path.c_str(), NULL);
+    if (!rp){
+        path_s = new std::string(t_path);
+    }else{
+        path_s = new std::string(rp);
+    }
+    free(rp);
 
     bool filecreate;
     struct stat openfile;
@@ -186,10 +198,20 @@ int on_rename(pid_t child, bool verbose){
 
     if (pid_to_cwd.find(child) != pid_to_cwd.end() && re_from[0] != '/'){
         re_from= *pid_to_cwd[child] + "/" + re_from;
+        char* rr = realpath(re_from.c_str(), NULL);
+        if (rr){
+            re_from = std::string(rr);
+        }
+        free(rr);
     }
 
     if (pid_to_cwd.find(child) != pid_to_cwd.end() && re_to[0] != '/'){
         re_to= *pid_to_cwd[child] + "/" + re_to;
+        char* rr = realpath(re_to.c_str(), NULL);
+        if (rr){
+            re_to = std::string(rr);
+        }
+        free(rr);
     }
 
     if (verbose){
