@@ -13,11 +13,13 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 extern std::set<std::string> files_read;
 extern std::set<std::string> files_written;
 
 static std::set<std::string> expanded;
+static std::unordered_map<std::string, std::unordered_map<std::string, bool>> executed_cmds;
 
 bool have_recipe(std::string sha512_digest){
 	DIR* d;
@@ -163,8 +165,12 @@ int build_recipe(std::string sha512_digest, std::string tmp_dirname, std::ofstre
                             }
                        }
                     }
+                    std::string real_path = tmp_dirname + cwd;
+                    if (executed_cmds[real_path].find(command) == executed_cmds[real_path].end()){
+                        execer << "cd" << real_path << std::endl << command << std::endl;
+                        executed_cmds[real_path][command] = true;
+                    }
                 }
-                execer << "cd " << tmp_dirname+cwd << std::endl << command << std::endl;
 			}
 		}
 		closedir(d);
