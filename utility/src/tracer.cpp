@@ -20,8 +20,7 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
-
-using namespace std;
+#include <algorithm>
 
 #if __WORDSIZE == 64
 #define REG ORIG_RAX
@@ -37,12 +36,12 @@ using namespace std;
 
 extern const int ptrace_options;
 
-static unordered_map<int, std::unordered_map<int, std::string*>> pid_to_descriptors_to_filename;
-static unordered_map<int, std::string*> pid_to_cwd;
+static unordered_map<int, std::unordered_map<int, std::string>> pid_to_descriptors_to_filename;
+static unordered_map<int, std::string> pid_to_cwd;
 
 int on_open(pid_t child, bool verbose){
     struct user_regs_struct regs;
-    std::string* path_s;
+    std::string path_s;
 
     ptrace(PTRACE_GETREGS, child, NULL, &regs);
     char* str=read_string(child, get_arg(regs, 0));
@@ -53,23 +52,23 @@ int on_open(pid_t child, bool verbose){
 
     std::string t_path;
     if (pid_to_cwd.find(child) != pid_to_cwd.end() && str[0] != '/'){
-        t_path = *pid_to_cwd[child] + "/" + std::string(str);
+        t_path = pid_to_cwd[child] + "/" + std::string(str);
     }else{
         t_path = std::string(str);
     }
 
     char* rp=realpath(t_path.c_str(), NULL);
     if (!rp){
-        path_s = new std::string(t_path);
+        path_s = std::string(t_path);
     }else{
-        path_s = new std::string(rp);
+        path_s = std::string(rp);
     }
     free(rp);
 
     bool filecreate;
     struct stat openfile;
 
-    if (stat(path_s->c_str(), &openfile)< 0){
+    if (stat(path_s.c_str(), &openfile)< 0){
         filecreate = true;
     }else{
         filecreate = false;
@@ -82,16 +81,15 @@ int on_open(pid_t child, bool verbose){
     int retval = ptrace(PTRACE_PEEKUSER, child, sizeof(long)*REG2, NULL);
 
     if (retval > 0 && should_track(str)){
-        if(!opened_file(*path_s, filecreate)){
+        if(!opened_file(path_s, filecreate)){
             if (verbose){
                 cout << "[" << child << "] OPEN " << endl;
-                cout << "\tpath: " << *path_s << endl;
+                cout << "\tpath: " << path_s << endl;
                 cout << "\tTRACKING..." << endl;
             }
-            pid_to_descriptors_to_filename[child][retval]=path_s;
+            pid_to_descriptors_to_filename[child][retval] = path_s;
         }else{
-            std::cout << "\tFailed to open: " << *path_s << std::endl;
-            delete path_s;
+            std::cout << "\tFailed to open: " << path_s << std::endl;
         }
     }
 
@@ -109,12 +107,10 @@ int on_close(pid_t child, bool verbose){
 
     if (pid_to_descriptors_to_filename[child].find(temp_fd) != pid_to_descriptors_to_filename[child].end()){
         if(verbose){
-            cout << "[" << child << "] CLOSE\n\tpath: " << *pid_to_descriptors_to_filename[child][temp_fd] << endl;
+            cout << "[" << child << "] CLOSE\n\tpath: " << pid_to_descriptors_to_filename[child][temp_fd] << endl;
         }
-        file_close(*pid_to_descriptors_to_filename[child][temp_fd]);
-        string* tt = pid_to_descriptors_to_filename[child][temp_fd];
+        file_close(pid_to_descriptors_to_filename[child][temp_fd]);
         pid_to_descriptors_to_filename[child].erase(temp_fd);
-        delete tt;
     }
     return 0;
 }
@@ -129,7 +125,7 @@ int on_dup(pid_t child, bool verbose){
     }
 
     if(pid_to_descriptors_to_filename[child].find(from) != pid_to_descriptors_to_filename[child].end()){
-        pid_to_descriptors_to_filename[child][to] = new std::string(*pid_to_descriptors_to_filename[child][from]);
+        pid_to_descriptors_to_filename[child][to] = std::string(pid_to_descriptors_to_filename[child][from]);
     }
     return 0;
 }
@@ -144,9 +140,9 @@ int on_read(pid_t child, bool verbose){
 
     if (pid_to_descriptors_to_filename[child].find(temp_fd) != pid_to_descriptors_to_filename[child].end()){
         if (verbose){
-            std::cout << "[" << child << "] READ\n\tpath: " << *pid_to_descriptors_to_filename[child][temp_fd] << "\n\tstring: " << str << std::endl;
+            std::cout << "[" << child << "] READ\n\tpath: " << pid_to_descriptors_to_filename[child][temp_fd] << "\n\tstring: " << str << std::endl;
         }
-        read_from_file(*pid_to_descriptors_to_filename[child][temp_fd]);
+        read_from_file(pid_to_descriptors_to_filename[child][temp_fd]);
     }
 
     free(str);
@@ -176,10 +172,10 @@ int on_write(pid_t child, bool verbose){
     ptrace(PTRACE_SYSCALL, child, NULL, NULL);
 
     if (pid_to_descriptors_to_filename[child].find(temp_fd) != pid_to_descriptors_to_filename[child].end()){
-        write_to_file(*pid_to_descriptors_to_filename[child][temp_fd]);
+        write_to_file(pid_to_descriptors_to_filename[child][temp_fd]);
 
         if (verbose){
-            std::cout << "[" << child << "] WRITE\n\tpath: " << *pid_to_descriptors_to_filename[child][temp_fd] << "\n\tstring: " << str << std::endl;
+            std::cout << "[" << child << "] WRITE\n\tpath: " << pid_to_descriptors_to_filename[child][temp_fd] << "\n\tstring: " << str << std::endl;
         }
     }
 
@@ -197,7 +193,7 @@ int on_rename(pid_t child, bool verbose){
     string re_to = string(to);
 
     if (pid_to_cwd.find(child) != pid_to_cwd.end() && re_from[0] != '/'){
-        re_from= *pid_to_cwd[child] + "/" + re_from;
+        re_from= pid_to_cwd[child] + "/" + re_from;
         char* rr = realpath(re_from.c_str(), NULL);
         if (rr){
             re_from = std::string(rr);
@@ -206,7 +202,7 @@ int on_rename(pid_t child, bool verbose){
     }
 
     if (pid_to_cwd.find(child) != pid_to_cwd.end() && re_to[0] != '/'){
-        re_to= *pid_to_cwd[child] + "/" + re_to;
+        re_to= pid_to_cwd[child] + "/" + re_to;
         char* rr = realpath(re_to.c_str(), NULL);
         if (rr){
             re_to = std::string(rr);
@@ -230,7 +226,7 @@ int on_chdir(pid_t child, bool verbose){
     ptrace(PTRACE_GETREGS, child, NULL, &regs);
     char* str = read_string(child, get_arg(regs,0));
 
-    pid_to_cwd[child] = new std::string(str);
+    pid_to_cwd[child] = std::string(str);
 
     if (verbose){
         std::cout << "Change directory to(" << child << "): " << str << std::endl;
@@ -255,7 +251,7 @@ int exec_trace(pid_t child, char* start_pwd, bool verbose){
     int status;
     waitpid(child, &status, 0);
 
-    pid_to_cwd[child] = new std::string(start_pwd);
+    pid_to_cwd[child] = std::string(start_pwd);
 
     ptrace(PTRACE_ATTACH, child, NULL, NULL);
     ptrace(PTRACE_SETOPTIONS, child, 0, ptrace_options);
@@ -313,20 +309,12 @@ int exec_trace(pid_t child, char* start_pwd, bool verbose){
             case SYS_rename: on_rename(child, verbose); break;
             case SYS_chdir: on_chdir(child, verbose); break;
             case SYS_dup2: on_dup(child, verbose); break;
-            default:
-                /*std::cout << "[" << child << "]The system call: " << decode_sc(answ) << "(" << answ << ")" << std::endl;
-                ptrace(PTRACE_SYSCALL, child, 0, 0);
-                struct user_regs_struct regs;
-                ptrace(PTRACE_GETREGS, child, NULL, &regs);
-                printf("\t0: %s\n", read_string(child, get_arg(regs,0)));
-                printf("\t1: %s\n", read_string(child, get_arg(regs,1)));
-                printf("\t2: %s\n", read_string(child, get_arg(regs,2)));
-                printf("\t3: %s\n", read_string(child, get_arg(regs,3)));
-                */
-
-                break;
+            default: break;
         }
     }
+
+    pid_to_cwd.clear();
+    pid_to_descriptors_to_filename.clear();
 	return 0;
 }
 

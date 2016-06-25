@@ -181,7 +181,7 @@ int build_recipe(std::string sha512_digest, std::string tmp_dirname){
 }
 
 int build_environment(std::string filename){
-    char s_template[] = "/tmp/tmpdir.XXXXXX";
+    char s_template[] = "/tmp/saintplication.XXXXXX";
     char* tmp_dirname = mkdtemp (s_template);
 
     std::cout << "The environment is replicated here: " << std::string(tmp_dirname) << std::endl;
@@ -192,5 +192,9 @@ int build_environment(std::string filename){
         return -1;
     }
 
-    return build_recipe(std::string(sha512_of_file), std::string(tmp_dirname));
+
+    build_recipe(std::string(sha512_of_file), std::string(tmp_dirname));
+    //TODO: create the execution file itself
+
+    return 0;
 }

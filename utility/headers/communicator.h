@@ -6,20 +6,21 @@
 static const std::string file_directory("/tmp/ilia_fd/");
 static const std::string recipe_directory("/tmp/ilia_recipes/");
 
-struct ofile{
-    std::string* filename;
-    std::string* open_sha512_digest;
-    std::string* close_sha512_digest;
-	int permissions;
-	bool written;
-	bool read;
-	bool created;
-	bool closed;
+class openned_file{
+	public:
+		std::string filename;
+		std::string open_sha512_digest;
+		std::string close_sha512_digest;
+		int permissions;
+		bool written;
+		bool read;
+		bool created;
+		bool closed;
 };
 
 struct ofile_compare {
-    bool operator() (ofile* lhs, ofile* rhs) const{
-        return *(lhs->filename) < *(rhs->filename);
+    bool operator() (openned_file lhs, openned_file rhs) const{
+        return lhs.filename < rhs.filename;
     }
 };
 
@@ -29,6 +30,28 @@ struct set_string_compare{
     return *lhs < *rhs;
   }
 };
+
+struct pointer_deleter{
+    template <typename T> void operator () (T *ptr){
+	    if(ptr){
+    	    delete ptr;
+        }
+    }
+};
+
+template <typename T> void deallocate_mapsecond(T c){
+    for (typename T::iterator i = c.begin(); i != c.end(); ++i){
+        c.erase(i);
+    }
+}
+
+template <typename T> void deallocate_container(T c){
+    for (typename T::iterator i = c.begin(); i != c.end(); ++i){
+        if (*i){
+            delete *i;
+        }
+    }
+}
 
 int close_communication(std::string program_name);
 int count_num (int n);
