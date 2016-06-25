@@ -27,12 +27,12 @@ The utility developed allows the user to run anything and produce a list of inpu
 - NixOS(?) - Preserve the folder hierarchy (Kind of)
 - Build fake environment in the tmp folder
 - Copy permissions of the files
+- Execution files
+- Path figuring out.
 
 #TODO:
-- Keeping stdin/stdout (Maybe some dup magic here?)
-- Path figuring out.
-- Beautiful cleaning
-- Need to versioning of files
 
 #Currently working on the:
-- Execution files
+- Need to versioning of files
+- Keeping stdin/stdout (Maybe some dup magic here?)
+- Beautiful cleaning
