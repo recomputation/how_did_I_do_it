@@ -195,7 +195,6 @@ int close_communication(std::string program_name){
             //std::cout << "CANT WRITE: " << *(std::string*)*it << std::endl;
             continue;
         }
-        std::cout << "Writing:" << (std::string)*it <<  " " << *index << std::endl;
         write_recipe(*it, *index, program_name);
         delete index;
     }

@@ -17,7 +17,7 @@
 extern std::set<std::string> files_read;
 extern std::set<std::string> files_written;
 
-static std::set<std::string*, set_string_compare> expanded;
+static std::set<std::string> expanded;
 
 bool have_recipe(std::string sha512_digest){
 	DIR* d;
@@ -33,7 +33,7 @@ bool have_recipe(std::string sha512_digest){
 
 int find_recipe_by_sha512(std::string sha512_digest){
 
-    expanded.insert(new std::string(sha512_digest));
+    expanded.insert(std::string(sha512_digest));
     std::string newfile = recipe_directory + sha512_digest;
 
     std::cout << "#Recipe: " << newfile << std::endl;
@@ -71,13 +71,12 @@ int find_recipe_by_sha512(std::string sha512_digest){
                 while (getline(t_file, line)){
                     std::vector<std::string> s_line = split(line, ' ');
                     std::string need_file = s_line[1];
-                    std::string* t_f = new std::string(need_file);
 
-                    if (expanded.find(t_f) == expanded.end()){
+                    if (expanded.find(need_file) == expanded.end()){
                         if (have_recipe(need_file)){
                             find_recipe_by_sha512(need_file);
                         }else{
-                            expanded.insert(t_f);
+                            expanded.insert(need_file);
                             std::cout << "Need to copy: " << s_line[0] << std::endl;
                         }
                     }
@@ -103,12 +102,10 @@ int find_recipe_by_name(std::string filename){
 	return find_recipe_by_sha512(std::string(sha512_of_file));
 }
 
-int build_recipe(std::string sha512_digest, std::string tmp_dirname){
-
-    expanded.insert(new std::string(sha512_digest));
+int build_recipe(std::string sha512_digest, std::string tmp_dirname, std::ofstream& execer){
+    expanded.insert(std::string(sha512_digest));
     std::string newfile = recipe_directory + sha512_digest;
 
-    std::cout << "#Recipe: " << newfile << std::endl;
     std::string me = std::string(".");
     std::string up_me = std::string("..");
 
@@ -147,13 +144,11 @@ int build_recipe(std::string sha512_digest, std::string tmp_dirname){
                     std::string need_file_sha = s_line[2];
                     std::string permissions = s_line[3];
 
-                    std::string* t_f = new std::string(need_file);
-
-                    if (expanded.find(t_f) == expanded.end()){
+                    if (expanded.find(need_file) == expanded.end()){
                         if (have_recipe(need_file)){
-                            build_recipe(need_file, tmp_dirname);
+                            build_recipe(need_file, tmp_dirname, execer);
                         }else{
-                            expanded.insert(t_f);
+                            expanded.insert(need_file);
                             folderize(s_line[0], tmp_dirname);
                             if (need_file_sha.compare("0")!=0){
                                 std::string from = file_directory + need_file_sha + std::string(dir->d_name);
@@ -169,7 +164,7 @@ int build_recipe(std::string sha512_digest, std::string tmp_dirname){
                        }
                     }
                 }
-                std::cout << std::endl;
+                execer << "cd " << tmp_dirname+cwd << std::endl << command << std::endl;
 			}
 		}
 		closedir(d);
@@ -181,8 +176,9 @@ int build_recipe(std::string sha512_digest, std::string tmp_dirname){
 }
 
 int build_environment(std::string filename){
-    char s_template[] = "/tmp/saintplication.XXXXXX";
+    char s_template[] = "/tmp/saint-lication.XXXXXX";
     char* tmp_dirname = mkdtemp (s_template);
+    std::string exec_me = std::string(tmp_dirname) + "/saintplication.sh";
 
     std::cout << "The environment is replicated here: " << std::string(tmp_dirname) << std::endl;
 
@@ -192,9 +188,15 @@ int build_environment(std::string filename){
         return -1;
     }
 
+    int f = open(exec_me.c_str(), O_CREAT, 0700);
+    if (f > 0){
+        close(f);
+    }
 
-    build_recipe(std::string(sha512_of_file), std::string(tmp_dirname));
-    //TODO: create the execution file itself
+    std::ofstream execer (exec_me.c_str());
+
+    build_recipe(std::string(sha512_of_file), std::string(tmp_dirname), execer);
+    delete sha512_of_file;
 
     return 0;
 }
