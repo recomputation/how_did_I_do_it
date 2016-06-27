@@ -39,7 +39,7 @@ int main (int argc, char *argv[]){
     bool findme = false, findmysha = false, builder = false;
     std::string findme_a, findmysha_a, builder_a;
 
-	while ((opt = getopt (argc, argv, "b:v:f:m:")) != -1){
+	while ((opt = getopt (argc, argv, "b:vf:m:")) != -1){
         switch (opt){
             case 'v':
                 verbose = true;

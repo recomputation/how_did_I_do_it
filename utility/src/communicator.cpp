@@ -44,9 +44,9 @@ char* get_sha512(std::string filename){
     SHA512_Final(digest,&mdContext);
 
 	char* index = new char[SHA512_DIGEST_LENGTH*2+1];
-    for (int i = 0; i < SHA512_DIGEST_LENGTH; i++)
+    for (int i = 0; i < SHA512_DIGEST_LENGTH; i++){
         sprintf(&index[i*2], "%02x", (unsigned int)digest[i]);
-
+    }
 	inFile.close();
 
     return index;
