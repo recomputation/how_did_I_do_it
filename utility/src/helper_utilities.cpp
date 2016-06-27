@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <sys/ptrace.h>
 #include <string.h>
+#include <pwd.h>
 
 #include <iostream>
 #include <fstream>
@@ -55,7 +56,9 @@ std::vector<std::string> split(const std::string &s, char delim) {
 
 int should_track(std::string file_name){
     //TODO: maybe add a set of rules here or something?
-    if ( file_name[0] != '/' || (file_name[0] == '/' && file_name.find(getlogin()) != std::string::npos)){
+
+    struct passwd* gl = getpwuid(getuid());
+    if ( file_name[0] != '/' || (file_name[0] == '/' && file_name.find(gl->pw_name) != std::string::npos)){
         return 1;
     }
     return 0;
