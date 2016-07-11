@@ -164,10 +164,7 @@ int rename_file(std::string from, std::string to){
 }
 
 int file_close(std::string file_name){
-    // Note if the file was closed without any changes (why was it open in the first place?)
-	//TODO: need to be carefyul here. It might be the case that the file is moved, without a closed handle
-	//TODO: add the outlined check
-	if(!isDirectory(file_name) && filename_to_ofile.find(file_name) != filename_to_ofile.end()){
+	if(!isDirectory(file_name) && (filename_to_ofile.find(file_name) != filename_to_ofile.end())){
         std::string* digest=file_sha512_and_copy(file_name);
         if (!digest){
             return -1;
@@ -230,9 +227,7 @@ int write_recipe(std::string filename, std::string sha512_digest, std::string pr
 	recipe_file << filename << std::endl << parent_cwd << std::endl << program_name << std::endl;
 
 	for (std::set<std::string>::iterator it=files_read.begin(); it!=files_read.end(); ++it){
-        const char* temp_filename = (*it).c_str();
-        //TODO:WHY?
-		openned_file t_ofile = filename_to_ofile[temp_filename];
+		openned_file t_ofile = filename_to_ofile[(*it).c_str()];
 		recipe_file << t_ofile.filename << " " << t_ofile.open_sha512_digest << " " << t_ofile.close_sha512_digest << " " << t_ofile.permissions << std::endl;
     }
 

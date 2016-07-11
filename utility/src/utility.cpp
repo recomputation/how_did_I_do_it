@@ -7,6 +7,7 @@
 #include "../headers/tracer.h"
 #include "../headers/communicator.h"
 #include "../headers/finder.h"
+#include "../headers/helper_utilities.h"
 
 #include <iostream>
 
@@ -91,6 +92,7 @@ int main (int argc, char *argv[]){
     argc -= optind;
     argv += optind;
 
+    load_file_configs();
 	traceme(argc, argv, verbose);
     return 0;
 }

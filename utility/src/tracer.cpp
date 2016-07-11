@@ -283,7 +283,6 @@ int exec_trace(pid_t child, char* start_pwd, bool verbose){
 
             if (WIFEXITED(status)){
                 num_proc--;
-                //TODO: Need to clean up the memory here
                 if (verbose){
                     std::cout << "[" << child << "] EXIT " << std::endl;
                 }

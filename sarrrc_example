@@ -1,0 +1,5 @@
+#Example of the config file that may be used for the tracking
+.*\.cpp
+.*\.o
+.*\.h
+.*\.out

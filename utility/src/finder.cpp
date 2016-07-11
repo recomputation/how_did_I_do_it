@@ -156,6 +156,18 @@ int build_recipe(std::string sha512_digest, std::string tmp_dirname, std::ofstre
                                 std::string from = file_directory + need_file_sha + std::string(dir->d_name);
                                 std::string to = tmp_dirname + s_line[0];
 
+                                struct stat st;
+                                if ( stat(to.c_str(), &st) != -1){
+                                    char* sha512_file_digest = get_sha512(to);
+                                    if (!sha512_file_digest){
+                                        continue;
+                                    }
+                                    if (need_file.compare(std::string(sha512_file_digest)) != 0){
+                                        //TODO: need to figure out what to do
+                                        //build_environment();
+                                    }
+                                    delete[] sha512_file_digest;
+                                }
                                 int f = open(to.c_str(), O_CREAT, atoi(permissions.c_str()));
                                 if(f > 0){
                                     close(f);
@@ -167,7 +179,7 @@ int build_recipe(std::string sha512_digest, std::string tmp_dirname, std::ofstre
                     }
                     std::string real_path = tmp_dirname + cwd;
                     if (executed_cmds[real_path].find(command) == executed_cmds[real_path].end()){
-                        execer << "cd" << real_path << std::endl << command << std::endl;
+                        execer << "cd " << real_path << std::endl << command << std::endl;
                         executed_cmds[real_path][command] = true;
                     }
                 }

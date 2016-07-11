@@ -14,6 +14,10 @@
 
 #include <iostream>
 #include <fstream>
+#include <set>
+#include <regex>
+
+static std::set<std::string> rules;
 
 //Method used to give number or characters taken by a particular number
 //After trying out different methods to calculate it this one has proven to be the fastest
@@ -55,13 +59,40 @@ std::vector<std::string> split(const std::string &s, char delim) {
 }
 
 int should_track(std::string file_name){
-    //TODO: maybe add a set of rules here or something?
 
-    struct passwd* gl = getpwuid(getuid());
-    if ( file_name[0] != '/' || (file_name[0] == '/' && file_name.find(gl->pw_name) != std::string::npos)){
-        return 1;
-    }
-    return 0;
+	if (file_name[0] == '/'){
+		//std::cout << "ABSOLUTE FILE NAME: " << file_name << std::endl;
+		return 0;
+	}
+
+	for (std::string rule: rules){
+        std::regex t_rule (rule);
+		if(std::regex_match(file_name, t_rule)){
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+void load_file_configs(){
+
+    struct passwd* pw = getpwuid(getuid());
+    std::string hpw = std::string(pw->pw_dir) + "/.sarrrc";
+	std::string line;
+    std::ifstream config_file(hpw.c_str());
+
+	if (config_file.is_open()){
+		while(getline(config_file, line)){
+			if ((line.compare("") != 0) && (line[0] != '#')){
+				rules.insert(line);
+			}
+		}
+		config_file.close();
+	}
+	if (rules.size() == 0){
+		std::cout << "NO RULES WERE LOADED - NO FILES ARE GOING TO BE TRACKED!\nWrite regex into ~/.sarrrc" << std::endl;
+	}
 }
 
 void folderize(std::string path, std::string tmp_dirname){
