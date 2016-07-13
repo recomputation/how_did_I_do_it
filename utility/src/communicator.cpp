@@ -22,7 +22,16 @@ static std::set<std::string> need_dirs;
 static std::unordered_map<std::string, openned_file> filename_to_ofile;
 static char* parent_cwd;
 
-static std::string timer = std::to_string(std::time(NULL));
+std::string get_rand_char_seq(int length){
+    char temp[length];
+    for (int i = 0; i < length; i++){
+        temp[i] = 'A' + (random()%26);
+    }
+    temp[length]='\0';
+    return temp;
+}
+
+static std::string timer = std::to_string(std::time(NULL)) + "_" + get_rand_char_seq(10);
 
 char* get_sha512(std::string filename){
 

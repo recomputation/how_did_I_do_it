@@ -29,10 +29,10 @@ The utility developed allows the user to run anything and produce a list of inpu
 - Copy permissions of the files
 - Execution files
 - Path figuring out.
+- Need to versioning of files
+- Multiple files in the same directory: need to create different files if there is a collision
 
 #TODO:
 
 #Currently working on the:
-- Need to versioning of files
 - Keeping stdin/stdout (Maybe some dup magic here?)
-- Beautiful cleaning
