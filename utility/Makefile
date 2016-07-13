@@ -6,18 +6,22 @@ objs = $(sources:$(SRC_FOLDER)/%.cpp=$(OBJ_FOLDER)/%.o)
 
 #---------
 
-all: utility
+all: init utility
 
 utility: $(objs) $(headers)
 	$(info $(sources))
 	$(info $(objs))
-	
 	$(CC) $(CC_FLAGS) -o utility.out $(objs)
 
 $(OBJ_FOLDER)/%.o:$(SRC_FOLDER)/%.cpp
 	$(CC) -c $< $(CC_FLAGS) -o $@
 
+init:
+	mkdir -p $(SRC_FOLDER)
+	mkdir -p $(HEADER_FOLDER)
+	mkdir -p $(OBJ_FOLDER)
+
 clean:
 	rm -f $(OBJ_FOLDER)/*.o
 	rm -rf /tmp/ilia_*
-	rm -rf /tmp/tmpdir.*
+	rm -rf /tmp/saint-lication.*

@@ -92,11 +92,6 @@ int opened_file(std::string file_name, bool did_create){
             return -1;
         }
 		openned_file ftemp;
-
-        struct stat st;
-        stat(file_name.c_str(), &st);
-        ftemp.permissions = st.st_mode;
-
 		ftemp.filename = file_name;
 		ftemp.open_sha512_digest = *digest;
 		ftemp.close_sha512_digest = "";
@@ -169,6 +164,10 @@ int file_close(std::string file_name){
         if (!digest){
             return -1;
         }
+
+        struct stat st;
+        stat(file_name.c_str(), &st);
+        filename_to_ofile[file_name].permissions = st.st_mode;
 		filename_to_ofile[file_name].close_sha512_digest += *digest;
 		filename_to_ofile[file_name].closed = true;
 		delete digest;
@@ -214,14 +213,8 @@ int write_recipe(std::string filename, std::string sha512_digest, std::string pr
         mkdir(newfile.c_str(), 0700);
     }
 
-    //TODO: yeah, was too smart. I see why they preserve the hierarchy
     newfile += "/_" + timer;
-    /*if(filename[0] == '/'){
-        newfile += "/_" + std::to_string(time(0));
-    }else{
-        newfile += "/" + filename + "_" + std::to_string(time(0));
-    }
-    */
+
 	std::ofstream recipe_file(newfile.c_str());
 
 	recipe_file << filename << std::endl << parent_cwd << std::endl << program_name << std::endl;
