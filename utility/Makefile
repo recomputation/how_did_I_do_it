@@ -12,6 +12,7 @@ utility: $(objs) $(headers)
 	$(info $(sources))
 	$(info $(objs))
 	$(CC) $(CC_FLAGS) -o utility.out $(objs)
+	#-static-libstdc++
 
 $(OBJ_FOLDER)/%.o:$(SRC_FOLDER)/%.cpp
 	$(CC) -c $< $(CC_FLAGS) -o $@
