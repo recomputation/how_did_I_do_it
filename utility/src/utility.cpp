@@ -31,33 +31,40 @@ void traceme(int argc, char* argv[], bool verbose){
 
 int main (int argc, char *argv[]){
     if (argc < 2){
-        std::cout << "Usage: " << argv[0] << " -f filename_to_find | -m sha512 sha512_of_file | command_to_execute" << std::endl;
+        std::cout << "Usage: " << argv[0] << " -f filename_to_find | -m sha512 sha512_of_file | -b buildenv | command_to_execute" << std::endl;
         return 1;
     }
 
-	int opt;
-	bool verbose = false;//true;
-    bool findme = false, findmysha = false, builder = false;
+    bool verbose = false, findme = false, findmysha = false, builder = false;
     std::string findme_a, findmysha_a, builder_a;
 
-	while ((opt = getopt (argc, argv, "b:vf:m:")) != -1){
-        switch (opt){
-            case 'v':
-                verbose = true;
-                break;
-            case 'f':
-                findme = true;
-                findme_a = optarg;
-                break;
-            case 'b':
-                builder = true;
-                builder_a = optarg;
-                break;
-            case 'm':
-                findmysha = true;
-                findmysha_a = optarg;
-                break;
+    for(int i=1; i < argc; i++){
+        if (strcmp(argv[i], "-v") == 0) {
+            verbose = true;
+            continue;
         }
+
+        if (strcmp(argv[i], "-f") == 0){
+            findme = true;
+            findme_a = argv[i+1];
+            break;
+        }
+
+        if (strcmp(argv[i], "-b") == 0){
+            builder = true;
+            builder_a = argv[i+1];
+            break;
+        }
+
+        if (strcmp(argv[i], "-m") == 0 ){
+            findmysha = true;
+            findmysha_a = argv[i+1];
+            break;
+        }
+
+        argc -= i;
+        argv += i;
+        break;
     }
 
     int r;
@@ -81,16 +88,13 @@ int main (int argc, char *argv[]){
     }
 
     if (findmysha){
-            std::cout << "Attempting to find the sha512 of the file: " << findmysha_a << std::endl;
-            r = find_recipe_by_sha512(findmysha_a);
-            if (r < 0){
-                std::cout << "File not found" << std::endl;
-            }
-            return r;
+        std::cout << "Attempting to find the sha512 of the file: " << findmysha_a << std::endl;
+        r = find_recipe_by_sha512(findmysha_a);
+        if (r < 0){
+            std::cout << "File not found" << std::endl;
+        }
+        return r;
     }
-
-    argc -= optind;
-    argv += optind;
 
     load_file_configs();
 	traceme(argc, argv, verbose);
