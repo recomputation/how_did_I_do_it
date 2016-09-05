@@ -14,12 +14,16 @@
 #include <unistd.h>
 
 #include <openssl/sha.h>
-static std::set<std::string> files_read;
-static std::set<std::string> files_written;
-static std::set<std::string> need_dirs;
 
-static std::unordered_map<std::string, openned_file> filename_to_ofile;
-static char* parent_cwd;
+std::set<std::string> files_read;
+std::set<std::string> files_written;
+std::set<std::string> need_dirs;
+
+std::string file_directory;
+std::string recipe_directory;
+
+std::unordered_map<std::string, openned_file> filename_to_ofile;
+char* parent_cwd;
 
 std::string get_rand_char_seq(int length){
     char temp[length];
@@ -30,7 +34,7 @@ std::string get_rand_char_seq(int length){
     return temp;
 }
 
-static std::string timer = std::to_string(std::time(NULL)) + "_" + get_rand_char_seq(10);
+std::string timer = std::to_string(std::time(NULL)) + "_" + get_rand_char_seq(10);
 
 char* get_sha512(std::string filename){
 

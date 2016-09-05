@@ -16,15 +16,6 @@
 #include <unordered_map>
 #include <vector>
 
-extern std::set<std::string> files_read;
-extern std::set<std::string> files_written;
-
-extern std::string file_directory;
-extern std::string recipe_directory;
-
-static std::set<std::string> expanded;
-static std::unordered_map<std::string, std::unordered_map<std::string, bool>> executed_cmds;
-
 bool have_recipe(std::string sha512_digest){
 	DIR* d;
     std::string newfile = recipe_directory + sha512_digest;

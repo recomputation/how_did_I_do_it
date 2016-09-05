@@ -19,7 +19,7 @@
 
 #include "../headers/communicator.h"
 
-static std::set<std::string> rules;
+std::set<std::string> rules;
 
 extern std::string file_directory;
 extern std::string recipe_directory;

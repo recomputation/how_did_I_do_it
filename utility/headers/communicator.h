@@ -3,8 +3,8 @@
 #include <iostream>
 #include <set>
 
-static std::string file_directory("/tmp/files_fd");
-static std::string recipe_directory("/tmp/recipes_fd");
+extern std::string file_directory;
+extern std::string recipe_directory;
 
 class openned_file{
 	public:

@@ -35,6 +35,7 @@ int main (int argc, char *argv[]){
         return 1;
     }
 
+    load_file_configs();
     bool verbose = false, findme = false, findmysha = false, builder = false;
     std::string findme_a, findmysha_a, builder_a;
 
@@ -96,7 +97,6 @@ int main (int argc, char *argv[]){
         return r;
     }
 
-    load_file_configs();
 	traceme(argc, argv, verbose);
     return 0;
 }

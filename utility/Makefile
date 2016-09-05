@@ -13,7 +13,7 @@ utility: $(objs) $(headers)
 	$(info $(objs))
 	$(CC) $(CC_FLAGS) -o utility.out $(objs)
 	#-static-libstdc++
-	[[ ! -f ~/.sarrrc ]] || touch ~/.sarrrc; printf "#Directory to store files\n/tmp/file_directory\n#Directory to store recipies\n/tmp/recipy_directory\n#Regexes for the files to track\n(.)*\n" > ~/.sarrrc
+	[[ ! -f ~/.sarrrc ]] || touch ~/.sarrrc; printf "#Directory to store files\n/tmp/file_directory/\n#Directory to store recipies\n/tmp/recipy_directory/\n#Regexes for the files to track\n(.)*\n" > ~/.sarrrc
 
 $(OBJ_FOLDER)/%.o:$(SRC_FOLDER)/%.cpp
 	$(CC) -c $< $(CC_FLAGS) -o $@
