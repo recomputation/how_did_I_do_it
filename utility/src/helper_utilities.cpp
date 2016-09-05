@@ -17,7 +17,12 @@
 #include <set>
 #include <regex>
 
+#include "../headers/communicator.h"
+
 static std::set<std::string> rules;
+
+extern std::string file_directory;
+extern std::string recipe_directory;
 
 //Method used to give number or characters taken by a particular number
 //After trying out different methods to calculate it this one has proven to be the fastest
@@ -83,8 +88,21 @@ void load_file_configs(){
     std::ifstream config_file(hpw.c_str());
 
 	if (config_file.is_open()){
+        int i = 0;
 		while(getline(config_file, line)){
 			if ((line.compare("") != 0) && (line[0] != '#')){
+				if( i == 0 ){
+                    file_directory = std::string(line);
+                    i++;
+                    continue;
+                }
+
+                if (i == 1){
+                    recipe_directory = std::string(line);
+                    i++;
+                    continue;
+                }
+
 				rules.insert(line);
 			}
 		}

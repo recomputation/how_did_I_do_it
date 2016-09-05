@@ -19,6 +19,9 @@
 extern std::set<std::string> files_read;
 extern std::set<std::string> files_written;
 
+extern std::string file_directory;
+extern std::string recipe_directory;
+
 static std::set<std::string> expanded;
 static std::unordered_map<std::string, std::unordered_map<std::string, bool>> executed_cmds;
 
@@ -85,6 +88,7 @@ int find_recipe_by_sha512(std::string sha512_digest){
                     }
                 }
                 std::cout << std::endl;
+                t_file.close();
 			}
 		}
 		closedir(d);
@@ -210,7 +214,8 @@ int build_recipe(std::string sha512_digest, std::string tmp_dirname, std::ofstre
                 execer << "cd " << real_path << std::endl << command << std::endl;
                 executed_cmds[real_path][command] = true;
             }
-}
+        }
+        t_file.close();
 		closedir(d);
 		return 0;
     }else{

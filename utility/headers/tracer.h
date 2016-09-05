@@ -2,7 +2,7 @@
 
 #include <sys/ptrace.h>
 
-using namespace std;
+
 static const int ptrace_options = PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK | PTRACE_O_TRACECLONE | PTRACE_O_TRACEVFORK | PTRACE_O_TRACEEXIT;
 
 int trace(int argc, char** argv, char* start_pwd, bool verbose);

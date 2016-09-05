@@ -14,7 +14,6 @@
 #include <unistd.h>
 
 #include <openssl/sha.h>
-
 static std::set<std::string> files_read;
 static std::set<std::string> files_written;
 static std::set<std::string> need_dirs;

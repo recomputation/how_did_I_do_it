@@ -36,8 +36,8 @@
 
 extern const int ptrace_options;
 
-static unordered_map<int, std::unordered_map<int, std::string>> pid_to_descriptors_to_filename;
-static unordered_map<int, std::string> pid_to_cwd;
+static std::unordered_map<int, std::unordered_map<int, std::string>> pid_to_descriptors_to_filename;
+static std::unordered_map<int, std::string> pid_to_cwd;
 
 int on_open(pid_t child, bool verbose){
     struct user_regs_struct regs;
@@ -83,9 +83,9 @@ int on_open(pid_t child, bool verbose){
     if (retval > 0 && should_track(str)){
         if(!opened_file(path_s, filecreate)){
             if (verbose){
-                cout << "[" << child << "] OPEN " << endl;
-                cout << "\tpath: " << path_s << endl;
-                cout << "\tTRACKING..." << endl;
+                std::cout << "[" << child << "] OPEN " << std::endl;
+                std::cout << "\tpath: " << path_s << std::endl;
+                std::cout << "\tTRACKING..." << std::endl;
             }
             pid_to_descriptors_to_filename[child][retval] = path_s;
         }else{
@@ -107,7 +107,7 @@ int on_close(pid_t child, bool verbose){
 
     if (pid_to_descriptors_to_filename[child].find(temp_fd) != pid_to_descriptors_to_filename[child].end()){
         if(verbose){
-            cout << "[" << child << "] CLOSE\n\tpath: " << pid_to_descriptors_to_filename[child][temp_fd] << endl;
+            std::cout << "[" << child << "] CLOSE\n\tpath: " << pid_to_descriptors_to_filename[child][temp_fd] << std::endl;
         }
         file_close(pid_to_descriptors_to_filename[child][temp_fd]);
         pid_to_descriptors_to_filename[child].erase(temp_fd);
@@ -189,8 +189,8 @@ int on_rename(pid_t child, bool verbose){
     char* str = read_string(child, get_arg(regs,0));
     char* to = read_string(child, get_arg(regs,1));
 
-    string re_from = string(str);
-    string re_to = string(to);
+    std::string re_from = std::string(str);
+    std::string re_to = std::string(to);
 
     if (pid_to_cwd.find(child) != pid_to_cwd.end() && re_from[0] != '/'){
         re_from= pid_to_cwd[child] + "/" + re_from;
@@ -284,8 +284,10 @@ int exec_trace(pid_t child, char* start_pwd, bool verbose){
             if (WIFEXITED(status)){
                 num_proc--;
                 if (verbose){
-                    std::cout << "[" << child << "] EXIT " << std::endl;
+                    std::cout << "[" << child << "] EXIT with " << pid_to_descriptors_to_filename[child].size() << " openned handles." << std::endl;
                 }
+
+
                 pid_to_descriptors_to_filename.erase(child);
                 if (pid_to_cwd.find(child) != pid_to_cwd.end()){
                     pid_to_cwd.erase(child);
