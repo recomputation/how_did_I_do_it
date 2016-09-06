@@ -241,20 +241,24 @@ int exec_child(int argc, char **argv){
     memcpy(args, argv, argc * sizeof(char*));
     args[argc] = NULL;
 	ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-    kill(getpid(), SIGSTOP);
+    //kill(getpid(), SIGSTOP);
     return execvp(args[0], args);
 }
 
 // Child and the program name
 int exec_trace(pid_t child, char* start_pwd, bool verbose){
-
     int status;
-    waitpid(child, &status, 0);
+    //waitpid(child, &status, __WALL);
+
+    errno = 0;
+    ptrace(PTRACE_ATTACH, child, NULL, NULL);
+    if (verbose){
+        std::cout << "[" << getpid() << "] ATTACHING TO " << child << ": " << strerror(errno) << std::endl;
+    }
+
+    ptrace(PTRACE_SETOPTIONS, child, 0, ptrace_options);
 
     pid_to_cwd[child] = std::string(start_pwd);
-
-    ptrace(PTRACE_ATTACH, child, NULL, NULL);
-    ptrace(PTRACE_SETOPTIONS, child, 0, ptrace_options);
 
     int num_proc = 1;
 
@@ -262,7 +266,6 @@ int exec_trace(pid_t child, char* start_pwd, bool verbose){
         while(1){
             ptrace(PTRACE_SYSCALL, child, 0, 0);
             child = waitpid(-1, &status, __WALL);
-
             if (is_fork(status) || is_vfork(status) || is_clone(status)){
                 long newpid;
                 ptrace(PTRACE_GETEVENTMSG, child, NULL, (long) &newpid);
@@ -285,6 +288,10 @@ int exec_trace(pid_t child, char* start_pwd, bool verbose){
                 num_proc--;
                 if (verbose){
                     std::cout << "[" << child << "] EXIT with " << pid_to_descriptors_to_filename[child].size() << " openned handles." << std::endl;
+
+                    for(std::unordered_map<int, std::string>::iterator it=pid_to_descriptors_to_filename[child].begin();it!=pid_to_descriptors_to_filename[child].end(); it++){
+                        std::cout << "\tHandle:" << it->first << " " << it->second << std::endl;
+                    }
                 }
 
 

@@ -11,5 +11,6 @@ std::vector<std::string> &split(const std::string &s, char delim, std::vector<st
 
 void folderize(std::string path, std::string tmp_dirname);
 
+std::string sha512_string(std::string gstr);
 int copy_file(std::string orig_filename, std::string new_filename);
 char* read_string(pid_t child, unsigned long addr);

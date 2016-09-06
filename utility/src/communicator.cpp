@@ -22,19 +22,21 @@ std::set<std::string> need_dirs;
 std::string file_directory;
 std::string recipe_directory;
 
+std::string timer;
 std::unordered_map<std::string, openned_file> filename_to_ofile;
 char* parent_cwd;
 
 std::string get_rand_char_seq(int length){
     char temp[length];
+    srand(time(NULL));
+
     for (int i = 0; i < length; i++){
-        temp[i] = 'A' + (random()%26);
+        temp[i] = 'A' + (std::rand()%26);
     }
     temp[length]='\0';
     return temp;
 }
 
-std::string timer = std::to_string(std::time(NULL)) + "_" + get_rand_char_seq(10);
 
 char* get_sha512(std::string filename){
 
@@ -80,10 +82,10 @@ std::string* file_sha512_and_copy(std::string filename){
     return tt;
 }
 
-void initiate_communication(char* cwd){
+void initiate_communication(char* cwd, std::string t_pn){
     struct stat st;
     parent_cwd = cwd;
-
+    timer = std::to_string(std::time(NULL)) + "_" + sha512_string(t_pn) + "_" + get_rand_char_seq(10);
     if (stat(file_directory.c_str(), &st) == -1) {
         mkdir(file_directory.c_str(), 0700);
     }
@@ -200,7 +202,6 @@ int close_communication(std::string program_name){
     for(std::set<std::string>::iterator it=files_written.begin(); it!=files_written.end(); ++it){
         std::string* index = file_sha512_and_copy((std::string)*it);
         if (!index){
-            //std::cout << "CANT WRITE: " << *(std::string*)*it << std::endl;
             continue;
         }
         write_recipe(*it, *index, program_name);
@@ -226,6 +227,7 @@ int write_recipe(std::string filename, std::string sha512_digest, std::string pr
     }
 
     newfile += "/_" + timer;
+    std::cout << "[" << getpid() << "] Writing into " << newfile << " " << filename << " " << program_name << std::endl;
 
 	std::ofstream recipe_file(newfile.c_str());
 

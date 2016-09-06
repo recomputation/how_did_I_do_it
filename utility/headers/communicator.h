@@ -56,7 +56,7 @@ template <typename T> void deallocate_container(T c){
 int close_communication(std::string program_name);
 int count_num (int n);
 
-void initiate_communication(char* cwd);
+void initiate_communication(char* cwd, std::string t_pn);
 
 // Method is invoked when the file is openned
 int opened_file(std::string filename, bool did_create);

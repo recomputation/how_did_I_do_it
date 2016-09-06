@@ -11,6 +11,7 @@
 #include <sys/ptrace.h>
 #include <string.h>
 #include <pwd.h>
+#include <openssl/sha.h>
 
 #include <iostream>
 #include <fstream>
@@ -175,6 +176,22 @@ char* read_string(pid_t child, unsigned long addr) {
         read += sizeof(tmp);
     }
     return val;
+}
+
+std::string sha512_string(std::string gstr){
+	unsigned char digest[SHA512_DIGEST_LENGTH];
+
+    SHA512_CTX mdContext;
+    SHA512_Init(&mdContext);
+    SHA512_Update(&mdContext, gstr.c_str(), gstr.length());
+    SHA512_Final(digest,&mdContext);
+
+	char index[SHA512_DIGEST_LENGTH*2+1];
+    for (int i = 0; i < SHA512_DIGEST_LENGTH; i++){
+        sprintf(&index[i*2], "%02x", (unsigned int)digest[i]);
+    }
+
+    return std::string(index);
 }
 
 

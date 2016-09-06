@@ -16,15 +16,15 @@ void traceme(int argc, char* argv[], bool verbose){
     char cwd[100];
     getcwd(cwd, sizeof(cwd));
 
-    initiate_communication(cwd);
+    std::string t_pn = "";
+    for (int i=0; i < argc; i++){
+        t_pn += std::string(argv[i]) + " ";
+    }
+
+    initiate_communication(cwd, t_pn);
 
 	trace(argc, argv, cwd, verbose);
 
-    std::string t_pn = "";
-
-    for (int i=0; i < argc; i++){
-        t_pn += std::string(argv[i]);
-    }
 
     close_communication(t_pn);
 }
@@ -66,6 +66,14 @@ int main (int argc, char *argv[]){
         argc -= i;
         argv += i;
         break;
+    }
+
+    if(verbose){
+        std::cout << "[" << getpid() << "] Execution command: ";
+        for (int i=0; i<argc; i++){
+            std::cout << argv[i] << " ";
+        }
+        std::cout << std::endl;
     }
 
     int r;
